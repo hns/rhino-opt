@@ -51,7 +51,7 @@ public final class OptRuntime extends ScriptRuntime
     /**
      * Implement ....() call shrinking optimizer code.
      */
-    public static Object call0(Callable fun, Scriptable thisObj,
+    public static Object call0(Callable fun, Object thisObj,
                                Context cx, Scriptable scope)
     {
         return fun.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
@@ -60,7 +60,7 @@ public final class OptRuntime extends ScriptRuntime
     /**
      * Implement ....(arg) call shrinking optimizer code.
      */
-    public static Object call1(Callable fun, Scriptable thisObj, Object arg0,
+    public static Object call1(Callable fun, Object thisObj, Object arg0,
                                Context cx, Scriptable scope)
     {
         return fun.call(cx, scope, thisObj, new Object[] { arg0 } );
@@ -69,7 +69,7 @@ public final class OptRuntime extends ScriptRuntime
     /**
      * Implement ....(arg0, arg1) call shrinking optimizer code.
      */
-    public static Object call2(Callable fun, Scriptable thisObj,
+    public static Object call2(Callable fun, Object thisObj,
                                Object arg0, Object arg1,
                                Context cx, Scriptable scope)
     {
@@ -79,7 +79,7 @@ public final class OptRuntime extends ScriptRuntime
     /**
      * Implement ....(arg0, arg1, ...) call shrinking optimizer code.
      */
-    public static Object callN(Callable fun, Scriptable thisObj,
+    public static Object callN(Callable fun, Object thisObj,
                                Object[] args,
                                Context cx, Scriptable scope)
     {
@@ -93,7 +93,7 @@ public final class OptRuntime extends ScriptRuntime
                                   Context cx, Scriptable scope)
     {
         Callable f = getNameFunctionAndThis(name, cx, scope);
-        Scriptable thisObj = lastStoredScriptable(cx);
+        Object thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, args);
     }
 
@@ -104,7 +104,7 @@ public final class OptRuntime extends ScriptRuntime
                                    Context cx, Scriptable scope)
     {
         Callable f = getNameFunctionAndThis(name, cx, scope);
-        Scriptable thisObj = lastStoredScriptable(cx);
+        Object thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
@@ -115,7 +115,7 @@ public final class OptRuntime extends ScriptRuntime
                                    Context cx, Scriptable scope)
     {
         Callable f = getPropFunctionAndThis(value, property, cx, scope);
-        Scriptable thisObj = lastStoredScriptable(cx);
+        Object thisObj = lastStoredScriptable(cx);
         return f.call(cx, scope, thisObj, ScriptRuntime.emptyArgs);
     }
 
@@ -159,7 +159,7 @@ public final class OptRuntime extends ScriptRuntime
     public static Object callSpecial(Context cx, Callable fun,
                                      Scriptable thisObj, Object[] args,
                                      Scriptable scope,
-                                     Scriptable callerThis, int callType,
+                                     Object callerThis, int callType,
                                      String fileName, int lineNumber)
     {
         return ScriptRuntime.callSpecial(cx, fun, thisObj, args, scope,
@@ -169,7 +169,7 @@ public final class OptRuntime extends ScriptRuntime
 
     public static Object newObjectSpecial(Context cx, Object fun,
                                           Object[] args, Scriptable scope,
-                                          Scriptable callerThis, int callType)
+                                          Object callerThis, int callType)
     {
         return ScriptRuntime.newSpecial(cx, fun, args, scope, callType);
     }
@@ -292,7 +292,7 @@ public final class OptRuntime extends ScriptRuntime
         static final String resumptionPoint_NAME = "resumptionPoint";
         static final String resumptionPoint_TYPE = "I";
         
-        public Scriptable thisObj;
+        public Object thisObj;
         static final String thisObj_NAME = "thisObj";
         static final String thisObj_TYPE =
             "Lorg/mozilla/javascript/Scriptable;";
@@ -302,7 +302,7 @@ public final class OptRuntime extends ScriptRuntime
         int maxLocals;
         int maxStack;
 
-        GeneratorState(Scriptable thisObj, int maxLocals, int maxStack) {
+        GeneratorState(Object thisObj, int maxLocals, int maxStack) {
             this.thisObj = thisObj;
             this.maxLocals = maxLocals;
             this.maxStack = maxStack;

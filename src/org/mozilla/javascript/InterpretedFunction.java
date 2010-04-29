@@ -147,15 +147,15 @@ final class InterpretedFunction extends NativeFunction implements Script
 
     /**
      * Calls the function.
-     * @param cx the current context 
+     * @param cx the current context
      * @param scope the scope used for the call
      * @param thisObj the value of "this"
-     * @param args function arguments. Must not be null. You can use 
-     * {@link ScriptRuntime#emptyArgs} to pass empty arguments.
+     * @param args function arguments. Must not be null. You can use
+     * {@link org.mozilla.javascript.ScriptRuntime#emptyArgs} to pass empty arguments.
      * @return the result of the function call.
      */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         if (!ScriptRuntime.hasTopCall(cx)) {

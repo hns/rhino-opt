@@ -117,7 +117,7 @@ final class NativeNumber extends IdScriptableObject
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(NUMBER_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -136,9 +136,14 @@ final class NativeNumber extends IdScriptableObject
 
         // The rest of Number.prototype methods require thisObj to be Number
 
-        if (!(thisObj instanceof NativeNumber))
+        double value;
+        if (thisObj instanceof Number) {
+            value = ((Number)thisObj).doubleValue();
+        } else if (thisObj instanceof NativeNumber) {
+            value = ((NativeNumber)thisObj).doubleValue;
+        } else {
             throw incompatibleCallError(f);
-        double value = ((NativeNumber)thisObj).doubleValue;
+        }
 
         switch (id) {
 

@@ -203,7 +203,7 @@ final class NativeString extends IdScriptableObject
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(STRING_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -269,10 +269,10 @@ final class NativeString extends IdScriptableObject
               case Id_toString:
               case Id_valueOf:
                 // ECMA 15.5.4.2: 'the toString function is not generic.
-                return realThis(thisObj, f).string;
+                return realThis(thisObj, f);
     
               case Id_toSource: {
-                String s = realThis(thisObj, f).string;
+                String s = realThis(thisObj, f);
                 return "(new String(\""+ScriptRuntime.escapeString(s)+"\"))";
               }
     
@@ -433,11 +433,15 @@ final class NativeString extends IdScriptableObject
         }
     }
 
-    private static NativeString realThis(Scriptable thisObj, IdFunctionObject f)
+    private static String realThis(Object thisObj, IdFunctionObject f)
     {
-        if (!(thisObj instanceof NativeString))
-            throw incompatibleCallError(f);
-        return (NativeString)thisObj;
+        if (thisObj instanceof String) {
+            return (String) thisObj;
+        }
+        if (thisObj instanceof NativeString) {
+            return ((NativeString)thisObj).string;
+        }
+        throw incompatibleCallError(f);
     }
 
     /*

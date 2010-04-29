@@ -118,7 +118,7 @@ public final class JavaAdapter implements IdFunctionCall
     }
 
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (f.hasTag(FTAG)) {
             if (f.methodId() == Id_JavaAdapter) {
@@ -542,7 +542,7 @@ public final class JavaAdapter implements IdFunctionCall
      * if none already exists.
      */
     public static Object callMethod(ContextFactory factory,
-                                    final Scriptable thisObj,
+                                    final Object thisObj,
                                     final Function f, final Object[] args,
                                     final long argsToWrap)
     {
@@ -573,7 +573,7 @@ public final class JavaAdapter implements IdFunctionCall
     }
 
     private static Object doCall(Context cx, Scriptable scope,
-                                 Scriptable thisObj, Function f,
+                                 Object thisObj, Function f,
                                  Object[] args, long argsToWrap)
     {
         // Wrap the rest of objects
@@ -956,7 +956,7 @@ public final class JavaAdapter implements IdFunctionCall
                       "org/mozilla/javascript/JavaAdapter",
                       "callMethod",
                       "(Lorg/mozilla/javascript/ContextFactory;"
-                      +"Lorg/mozilla/javascript/Scriptable;"
+                      +"Ljava/lang/Object;"
                       +"Lorg/mozilla/javascript/Function;"
                       +"[Ljava/lang/Object;"
                       +"J"

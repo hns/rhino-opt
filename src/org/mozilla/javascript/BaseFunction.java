@@ -264,7 +264,7 @@ public class BaseFunction extends IdScriptableObject implements Function
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(FUNCTION_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -321,11 +321,13 @@ public class BaseFunction extends IdScriptableObject implements Function
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    private BaseFunction realFunction(Scriptable thisObj, IdFunctionObject f)
+    private BaseFunction realFunction(Object thisObj, IdFunctionObject f)
     {
-        Object x = thisObj.getDefaultValue(ScriptRuntime.FunctionClass);
-        if (x instanceof BaseFunction) {
-            return (BaseFunction)x;
+        if (thisObj instanceof ScriptableObject) {
+            Object x = ((ScriptableObject) thisObj).getDefaultValue(ScriptRuntime.FunctionClass);
+            if (x instanceof BaseFunction) {
+                return (BaseFunction)x;
+            }
         }
         throw ScriptRuntime.typeError1("msg.incompat.call",
                                        f.getFunctionName());
@@ -356,7 +358,7 @@ public class BaseFunction extends IdScriptableObject implements Function
     /**
      * Should be overridden.
      */
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         return Undefined.instance;
@@ -397,11 +399,11 @@ public class BaseFunction extends IdScriptableObject implements Function
      * Creates new script object.
      * The default implementation of {@link #construct} uses the method to
      * to get the value for <tt>thisObj</tt> argument when invoking
-     * {@link #call}.
+     * {@link RegExpProxy#action}.
      * The methos is allowed to return <tt>null</tt> to indicate that
-     * {@link #call} will create a new object itself. In this case
+     * {@link RegExpProxy#action} will create a new object itself. In this case
      * {@link #construct} will set scope and prototype on the result
-     * {@link #call} unless they are already set.
+     * {@link RegExpProxy#action} unless they are already set.
      */
     public Scriptable createObject(Context cx, Scriptable scope)
     {

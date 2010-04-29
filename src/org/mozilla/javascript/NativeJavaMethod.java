@@ -150,7 +150,7 @@ public class NativeJavaMethod extends BaseFunction
     }
 
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         // Find a method that matches the types given.
@@ -222,8 +222,8 @@ public class NativeJavaMethod extends BaseFunction
         Object javaObject;
         if (meth.isStatic()) {
             javaObject = null;  // don't need an object
-        } else {
-            Scriptable o = thisObj;
+        } else if (thisObj instanceof Scriptable) {
+            Scriptable o = (Scriptable) thisObj;
             Class<?> c = meth.getDeclaringClass();
             for (;;) {
                 if (o == null) {
@@ -239,6 +239,8 @@ public class NativeJavaMethod extends BaseFunction
                 }
                 o = o.getPrototype();
             }
+        } else {
+            javaObject = thisObj;
         }
         if (debug) {
             printDebug("Calling ", meth, args);

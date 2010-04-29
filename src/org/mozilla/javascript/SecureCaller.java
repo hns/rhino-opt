@@ -65,14 +65,14 @@ public abstract class SecureCaller
         new WeakHashMap<CodeSource,Map<ClassLoader,SoftReference<SecureCaller>>>();
     
     public abstract Object call(Callable callable, Context cx, 
-            Scriptable scope, Scriptable thisObj, Object[] args);
+            Scriptable scope, Object thisObj, Object[] args);
     
     /**
      * Call the specified callable using a protection domain belonging to the 
      * specified code source. 
      */
     static Object callSecurely(final CodeSource codeSource, Callable callable, 
-            Context cx, Scriptable scope, Scriptable thisObj, Object[] args)
+            Context cx, Scriptable scope, Object thisObj, Object[] args)
     {
         final Thread thread = Thread.currentThread();
         // Run in doPrivileged as we might be checked for "getClassLoader" 

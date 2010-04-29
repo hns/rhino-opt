@@ -123,7 +123,7 @@ import java.security.PrivilegedAction;
  *
  *     // Override {@link #doTopCall(Callable,
                                Context, Scriptable,
-                               Scriptable, Object[])}
+                               Object, Object[])}
  *     protected Object doTopCall(Callable callable,
  *                                Context cx, Scriptable scope,
  *                                Scriptable thisObj, Object[] args)
@@ -421,7 +421,7 @@ public class ContextFactory
      */
     protected Object doTopCall(Callable callable,
                                Context cx, Scriptable scope,
-                               Scriptable thisObj, Object[] args)
+                               Object thisObj, Object[] args)
     {
         return callable.call(cx, scope, thisObj, args);
     }

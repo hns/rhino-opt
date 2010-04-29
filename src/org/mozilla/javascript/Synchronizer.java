@@ -83,10 +83,10 @@ public class Synchronizer extends Delegator {
     }
 
     /**
-     * @see org.mozilla.javascript.Function#call
+     * @see RegExpProxy#action
      */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         Object sync = syncObject != null ? syncObject : thisObj;

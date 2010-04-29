@@ -119,7 +119,7 @@ final class NativeError extends IdScriptableObject
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(ERROR_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -173,14 +173,18 @@ final class NativeError extends IdScriptableObject
         put("stack", this, value);
     }
 
-    private static Object js_toString(Scriptable thisObj) {
-        Object name = ScriptableObject.getProperty(thisObj, "name");
+    private static Object js_toString(Object thisObj) {
+        if (!(thisObj instanceof Scriptable)) {
+            return ScriptRuntime.toString(thisObj);
+        }
+        Scriptable scriptable = (Scriptable) thisObj;
+        Object name = ScriptableObject.getProperty(scriptable, "name");
         if (name == NOT_FOUND || name == Undefined.instance) {
             name = "Error";
         } else {
             name = ScriptRuntime.toString(name);
         }
-        Object msg = ScriptableObject.getProperty(thisObj, "message");
+        Object msg = ScriptableObject.getProperty(scriptable, "message");
         final Object result;
         if (msg == NOT_FOUND || msg == Undefined.instance) {
             result = Undefined.instance;
@@ -191,13 +195,14 @@ final class NativeError extends IdScriptableObject
     }
 
     private static String js_toSource(Context cx, Scriptable scope,
-                                      Scriptable thisObj)
+                                      Object thisObj)
     {
+        Scriptable scriptable = (Scriptable) thisObj;
         // Emulation of SpiderMonkey behavior
-        Object name = ScriptableObject.getProperty(thisObj, "name");
-        Object message = ScriptableObject.getProperty(thisObj, "message");
-        Object fileName = ScriptableObject.getProperty(thisObj, "fileName");
-        Object lineNumber = ScriptableObject.getProperty(thisObj, "lineNumber");
+        Object name = ScriptableObject.getProperty(scriptable, "name");
+        Object message = ScriptableObject.getProperty(scriptable, "message");
+        Object fileName = ScriptableObject.getProperty(scriptable, "fileName");
+        Object lineNumber = ScriptableObject.getProperty(scriptable, "lineNumber");
 
         StringBuffer sb = new StringBuffer();
         sb.append("(new ");

@@ -515,7 +515,7 @@ public class Codegen implements Evaluator
         cfw.startMethod("call",
                         "(Lorg/mozilla/javascript/Context;" +
                         "Lorg/mozilla/javascript/Scriptable;" +
-                        "Lorg/mozilla/javascript/Scriptable;" +
+                        "Ljava/lang/Object;" +
                         "[Ljava/lang/Object;)Ljava/lang/Object;",
                         (short)(ClassFileWriter.ACC_PUBLIC
                                 | ClassFileWriter.ACC_FINAL));
@@ -544,7 +544,7 @@ public class Codegen implements Evaluator
                       "(Lorg/mozilla/javascript/Callable;"
                       +"Lorg/mozilla/javascript/Context;"
                       +"Lorg/mozilla/javascript/Scriptable;"
-                      +"Lorg/mozilla/javascript/Scriptable;"
+                      +"Ljava/lang/Object;"
                       +"[Ljava/lang/Object;"
                       +")Ljava/lang/Object;");
         cfw.add(ByteCode.ARETURN);
@@ -666,7 +666,7 @@ public class Codegen implements Evaluator
                       "call",
                       "(Lorg/mozilla/javascript/Context;"
                       +"Lorg/mozilla/javascript/Scriptable;"
-                      +"Lorg/mozilla/javascript/Scriptable;"
+                      +"Ljava/lang/Object;"
                       +"[Ljava/lang/Object;"
                       +")Ljava/lang/Object;");
 
@@ -1754,7 +1754,7 @@ class BodyCodegen
             cfw.addPush(0); // false to indicate it is not eval script
             addScriptRuntimeInvoke("initScript",
                                    "(Lorg/mozilla/javascript/NativeFunction;"
-                                   +"Lorg/mozilla/javascript/Scriptable;"
+                                   +"Ljava/lang/Object;"
                                    +"Lorg/mozilla/javascript/Context;"
                                    +"Lorg/mozilla/javascript/Scriptable;"
                                    +"Z"
@@ -3336,7 +3336,7 @@ class BodyCodegen
                 generateFunctionAndThisObj(child, node);
                 methodName = "call0";
                 signature = "(Lorg/mozilla/javascript/Callable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"Lorg/mozilla/javascript/Context;"
                             +"Lorg/mozilla/javascript/Scriptable;"
                             +")Ljava/lang/Object;";
@@ -3367,7 +3367,7 @@ class BodyCodegen
                 generateExpression(firstArgChild, node);
                 methodName = "call1";
                 signature = "(Lorg/mozilla/javascript/Callable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"Ljava/lang/Object;"
                             +"Lorg/mozilla/javascript/Context;"
                             +"Lorg/mozilla/javascript/Scriptable;"
@@ -3377,7 +3377,7 @@ class BodyCodegen
                 generateExpression(firstArgChild.getNext(), node);
                 methodName = "call2";
                 signature = "(Lorg/mozilla/javascript/Callable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"Ljava/lang/Object;"
                             +"Ljava/lang/Object;"
                             +"Lorg/mozilla/javascript/Context;"
@@ -3387,7 +3387,7 @@ class BodyCodegen
                 generateCallArgArray(node, firstArgChild, false);
                 methodName = "callN";
                 signature = "(Lorg/mozilla/javascript/Callable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"[Ljava/lang/Object;"
                             +"Lorg/mozilla/javascript/Context;"
                             +"Lorg/mozilla/javascript/Scriptable;"
@@ -3554,7 +3554,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 "call",
                 "(Lorg/mozilla/javascript/Context;"
                 +"Lorg/mozilla/javascript/Scriptable;"
-                +"Lorg/mozilla/javascript/Scriptable;"
+                +"Ljava/lang/Object;"
                 +"[Ljava/lang/Object;"
                 +")Ljava/lang/Object;");
         }
@@ -3694,7 +3694,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         addScriptRuntimeInvoke(
             "lastStoredScriptable",
             "(Lorg/mozilla/javascript/Context;"
-            +")Lorg/mozilla/javascript/Scriptable;");
+            +")Ljava/lang/Object;");
     }
 
     private void updateLineNumber(Node node)
@@ -4674,7 +4674,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             cfw.addALoad(contextLocal);
             addScriptRuntimeInvoke(
                 "getObjectProp",
-                "(Lorg/mozilla/javascript/Scriptable;"
+                "(Ljava/lang/Object;"
                 +"Ljava/lang/String;"
                 +"Lorg/mozilla/javascript/Context;"
                 +")Ljava/lang/Object;");
@@ -4713,7 +4713,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 cfw.addALoad(contextLocal);
                 addScriptRuntimeInvoke(
                     "getObjectProp",
-                    "(Lorg/mozilla/javascript/Scriptable;"
+                    "(Ljava/lang/Object;"
                     +"Ljava/lang/String;"
                     +"Lorg/mozilla/javascript/Context;"
                     +")Ljava/lang/Object;");

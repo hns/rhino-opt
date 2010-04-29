@@ -104,7 +104,7 @@ public final class Interpreter extends Icode implements Evaluator
         boolean useActivation;
         boolean isContinuationsTopFrame;
 
-        Scriptable thisObj;
+        Object thisObj;
         Scriptable[] scriptRegExps;
 
 // The values that change during interpretation
@@ -830,7 +830,7 @@ public final class Interpreter extends Icode implements Evaluator
 
     static Object interpret(InterpretedFunction ifun,
                             Context cx, Scriptable scope,
-                            Scriptable thisObj, Object[] args)
+                            Object thisObj, Object[] args)
     {
         if (!ScriptRuntime.hasTopCall(cx)) Kit.codeBug();
 
@@ -1595,7 +1595,7 @@ switch (op) {
         // CALL generation ensures that fun and funThisObj
         // are already Scriptable and Callable objects respectively
         Callable fun = (Callable)stack[stackTop];
-        Scriptable funThisObj = (Scriptable)stack[stackTop + 1];
+        Object funThisObj = stack[stackTop + 1];
         if (op == Token.REF_CALL) {
             Object[] outArgs = getArgsArray(stack, sDbl, stackTop + 2,
                                             indexReg);
@@ -2397,7 +2397,7 @@ switch (op) {
      */
     private static CallFrame initFrameForNoSuchMethod(Context cx,
             CallFrame frame, int indexReg, Object[] stack, double[] sDbl,
-            int stackTop, int op, Scriptable funThisObj, Scriptable calleeScope,
+            int stackTop, int op, Object funThisObj, Scriptable calleeScope,
             NoSuchMethodShim noSuchMethodShim, InterpretedFunction ifun)
     {
         // create an args array from the stack
@@ -2656,7 +2656,7 @@ switch (op) {
     }
 
     private static void initFrame(Context cx, Scriptable callerScope,
-                                  Scriptable thisObj,
+                                  Object thisObj,
                                   Object[] args, double[] argsDbl,
                                   int argShift, int argCount,
                                   InterpretedFunction fnOrScript,

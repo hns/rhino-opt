@@ -253,7 +253,7 @@ final class QName extends IdScriptableObject
     public Object execIdCall(IdFunctionObject f,
                              Context cx,
                              Scriptable scope,
-                             Scriptable thisObj,
+                             Object thisObj,
                              Object[] args)
     {
         if (!f.hasTag(QNAME_TAG)) {
