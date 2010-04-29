@@ -546,7 +546,7 @@ public class FunctionObject extends BaseFunction
             signature.append(')');
             signature.append(ClassFileWriter.classToSignature(returnType));
             if (!method.isVarArgs() && (!Modifier.isStatic(method.getModifiers()) || funObj.parmsLength == VARARGS_METHOD)) {
-            // if (method.getName().equals("hardWay")) {
+                // if (method.getName().equals("hardWay")) {
                 String className = "rhino.FunctionObject" + count.getAndIncrement();
                 ClassFileWriter cfw = new ClassFileWriter(className, BASECLASS, "<generated>");
                 cfw.setFlags((short) (ClassFileWriter.ACC_PUBLIC | ClassFileWriter.ACC_FINAL));
@@ -569,7 +569,7 @@ public class FunctionObject extends BaseFunction
                     cfw.addALoad(4);
                     cfw.addLoadThis();
                     cfw.addInvoke(ByteCode.INVOKESTATIC, method.getDeclaringClass().getName(),
-                        method.getName(), signature.toString());
+                            method.getName(), signature.toString());
                     if (returnType == Void.TYPE) {
                         loadUndefined(cfw);
                     } else if (returnType == Byte.TYPE) {
@@ -592,116 +592,116 @@ public class FunctionObject extends BaseFunction
                     cfw.add(ByteCode.ARETURN);
                     cfw.stopMethod((short)5);
                 } else {
-                cfw.addALoad(3); // thisObject
-                cfw.add(ByteCode.CHECKCAST, method.getDeclaringClass().getName());
-                cfw.addALoad(4); // args array
-                cfw.add(ByteCode.ARRAYLENGTH);
-                cfw.addIStore(5); // args length
-                for (int i = 0; i < paramTypes.length; i++) {
-                    int undefinedArg = cfw.acquireLabel();
-                    int done = cfw.acquireLabel();
-                    Class<?> param = paramTypes[i];
-                    cfw.addLoadConstant(i);
-                    cfw.addILoad(5);
-                    cfw.add(ByteCode.IF_ICMPGE, undefinedArg);
-                    cfw.addALoad(4);
-                    cfw.addLoadConstant(i);
-                    cfw.add(ByteCode.AALOAD);
-                    if (param != Object.class) {
-                        // convert argument if necessary
-                        if (param.isPrimitive()) {
-                            int isExpectedWrapper = cfw.acquireLabel();
-                            cfw.add(ByteCode.DUP);
-                            String expectedWrapper = param == Boolean.TYPE ? "java.lang.Boolean" : "java.lang.Number";
-                            cfw.add(ByteCode.INSTANCEOF, expectedWrapper);
-                            cfw.add(ByteCode.IFNE, isExpectedWrapper);
-                            cfw.addALoad(1);   // cx
-                            cfw.add(ByteCode.SWAP);
-                            cfw.addALoad(2);   // scope
-                            cfw.add(ByteCode.SWAP);
-                            cfw.addLoadConstant(getTypeTag(param));
-                            cfw.addInvoke(ByteCode.INVOKESTATIC, BASECLASS, "convertArg", CONVERT_SIGNATURE);
-                            cfw.markLabel(isExpectedWrapper);
-                            cfw.add(ByteCode.CHECKCAST, expectedWrapper);
-                            if (param == Boolean.TYPE) {
-                                cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Boolean", "booleanValue", "()Z");
-                            } else if (param == Long.TYPE) {
-                                cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "longValue", "()J");
-                            } else if (param == Double.TYPE) {
-                                cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "doubleValue", "()D");
+                    cfw.addALoad(3); // thisObject
+                    cfw.add(ByteCode.CHECKCAST, method.getDeclaringClass().getName());
+                    cfw.addALoad(4); // args array
+                    cfw.add(ByteCode.ARRAYLENGTH);
+                    cfw.addIStore(5); // args length
+                    for (int i = 0; i < paramTypes.length; i++) {
+                        int undefinedArg = cfw.acquireLabel();
+                        int done = cfw.acquireLabel();
+                        Class<?> param = paramTypes[i];
+                        cfw.addLoadConstant(i);
+                        cfw.addILoad(5);
+                        cfw.add(ByteCode.IF_ICMPGE, undefinedArg);
+                        cfw.addALoad(4);
+                        cfw.addLoadConstant(i);
+                        cfw.add(ByteCode.AALOAD);
+                        if (param != Object.class) {
+                            // convert argument if necessary
+                            if (param.isPrimitive()) {
+                                int isExpectedWrapper = cfw.acquireLabel();
+                                cfw.add(ByteCode.DUP);
+                                String expectedWrapper = param == Boolean.TYPE ? "java.lang.Boolean" : "java.lang.Number";
+                                cfw.add(ByteCode.INSTANCEOF, expectedWrapper);
+                                cfw.add(ByteCode.IFNE, isExpectedWrapper);
+                                cfw.addALoad(1);   // cx
+                                cfw.add(ByteCode.SWAP);
+                                cfw.addALoad(2);   // scope
+                                cfw.add(ByteCode.SWAP);
+                                cfw.addLoadConstant(getTypeTag(param));
+                                cfw.addInvoke(ByteCode.INVOKESTATIC, BASECLASS, "convertArg", CONVERT_SIGNATURE);
+                                cfw.markLabel(isExpectedWrapper);
+                                cfw.add(ByteCode.CHECKCAST, expectedWrapper);
+                                if (param == Boolean.TYPE) {
+                                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Boolean", "booleanValue", "()Z");
+                                } else if (param == Long.TYPE) {
+                                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "longValue", "()J");
+                                } else if (param == Double.TYPE) {
+                                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "doubleValue", "()D");
+                                } else {
+                                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "intValue", "()I");
+                                }
                             } else {
-                                cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "intValue", "()I");
+                                cfw.add(ByteCode.DUP);
+                                cfw.add(ByteCode.INSTANCEOF, param.getName());
+                                cfw.add(ByteCode.IFNE, done);
+                                cfw.addALoad(1);   // cx
+                                cfw.add(ByteCode.SWAP);
+                                cfw.addALoad(2);   // scope
+                                cfw.add(ByteCode.SWAP);
+                                cfw.addLoadConstant(getTypeTag(param));
+                                cfw.addInvoke(ByteCode.INVOKESTATIC, BASECLASS, "convertArg", CONVERT_SIGNATURE);
+                            }
+                        }
+                        cfw.add(ByteCode.GOTO, done);
+                        // undefined argument
+                        cfw.markLabel(undefinedArg);
+                        if (param == Object.class) {
+                            loadUndefined(cfw);
+                            // cfw.add(ByteCode.CHECKCAST, param.getName());
+                        } else if (param.isPrimitive()) {
+                            if (param == Long.TYPE) {
+                                cfw.add(ByteCode.LCONST_0);
+                            } else if (param == Double.TYPE) {
+                                cfw.add(ByteCode.DCONST_0);
+                            } else {
+                                cfw.add(ByteCode.ICONST_0);
                             }
                         } else {
-                            cfw.add(ByteCode.DUP);
-                            cfw.add(ByteCode.INSTANCEOF, param.getName());
-                            cfw.add(ByteCode.IFNE, done);
-                            cfw.addALoad(1);   // cx
-                            cfw.add(ByteCode.SWAP);
-                            cfw.addALoad(2);   // scope
-                            cfw.add(ByteCode.SWAP);
-                            cfw.addLoadConstant(getTypeTag(param));
-                            cfw.addInvoke(ByteCode.INVOKESTATIC, BASECLASS, "convertArg", CONVERT_SIGNATURE);
+                            cfw.add(ByteCode.ACONST_NULL);
+                        }
+                        cfw.markLabel(done);
+                        if (!param.isPrimitive()) {
+                            cfw.add(ByteCode.CHECKCAST, param.getName());
                         }
                     }
-                    cfw.add(ByteCode.GOTO, done);
-                    // undefined argument
-                    cfw.markLabel(undefinedArg);
-                    if (param == Object.class) {
+                    // invoke
+                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, method.getDeclaringClass().getName(),
+                            method.getName(), signature.toString());
+                    if (returnType == Void.TYPE) {
                         loadUndefined(cfw);
-                        // cfw.add(ByteCode.CHECKCAST, param.getName());
-                    } else if (param.isPrimitive()) {
-                        if (param == Long.TYPE) {
-                            cfw.add(ByteCode.LCONST_0);
-                        } else if (param == Double.TYPE) {
-                            cfw.add(ByteCode.DCONST_0);
-                        } else {
-                            cfw.add(ByteCode.ICONST_0);
-                        }
-                    } else {
+                    } else if (returnType == Byte.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Byte", "valueOf", "(B)Ljava/lang/Byte;");
+                    } else if (returnType == Character.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Character", "valueOf", "(C)Ljava/lang/Short;");
+                    } else if (returnType == Double.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Double", "valueOf", "(D)Ljava/lang/Double;");
+                    } else if (returnType == Float.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Float", "valueOf", "(F)Ljava/lang/Float;");
+                    } else if (returnType == Integer.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Integer", "valueOf", "(I)Ljava/lang/Integer;");
+                    } else if (returnType == Long.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Long", "valueOf", "(J)Ljava/lang/Long;");
+                    } else if (returnType == Short.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Short", "valueOf", "(S)Ljava/lang/Short;");
+                    } else if (returnType == Boolean.TYPE) {
+                        cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
+                    } else if (getTypeTag(returnType) == JAVA_UNSUPPORTED_TYPE) {
+                        cfw.addAStore(6);
+                        cfw.addALoad(1);
+                        cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "org.mozilla.javascript.Context", "getWrapFactory",
+                                "()Lorg/mozilla/javascript/WrapFactory;");
+                        cfw.addALoad(1);
+                        cfw.addALoad(2);
+                        cfw.addALoad(6);
                         cfw.add(ByteCode.ACONST_NULL);
+                        cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "org.mozilla.javascript.WrapFactory", "wrap",
+                                "(Lorg/mozilla/javascript/Context;Lorg/mozilla/javascript/Scriptable;"
+                                        +  "Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;");
                     }
-                    cfw.markLabel(done);
-                    if (!param.isPrimitive()) {
-                        cfw.add(ByteCode.CHECKCAST, param.getName());
-                    }
-                }
-                // invoke
-                cfw.addInvoke(ByteCode.INVOKEVIRTUAL, method.getDeclaringClass().getName(),
-                        method.getName(), signature.toString());
-                if (returnType == Void.TYPE) {
-                    loadUndefined(cfw);
-                } else if (returnType == Byte.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Byte", "valueOf", "(B)Ljava/lang/Byte;");
-                } else if (returnType == Character.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Character", "valueOf", "(C)Ljava/lang/Short;");
-                } else if (returnType == Double.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Double", "valueOf", "(D)Ljava/lang/Double;");
-                } else if (returnType == Float.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Float", "valueOf", "(F)Ljava/lang/Float;");
-                } else if (returnType == Integer.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Integer", "valueOf", "(I)Ljava/lang/Integer;");
-                } else if (returnType == Long.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Long", "valueOf", "(J)Ljava/lang/Long;");
-                } else if (returnType == Short.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Short", "valueOf", "(S)Ljava/lang/Short;");
-                } else if (returnType == Boolean.TYPE) {
-                    cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Boolean", "valueOf", "(Z)Ljava/lang/Boolean;");
-                } else if (getTypeTag(returnType) == JAVA_UNSUPPORTED_TYPE) {
-                    cfw.addAStore(6);
-                    cfw.addALoad(1);
-                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "org.mozilla.javascript.Context", "getWrapFactory",
-                            "()Lorg/mozilla/javascript/WrapFactory;");
-                    cfw.addALoad(1);
-                    cfw.addALoad(2);
-                    cfw.addALoad(6);
-                    cfw.add(ByteCode.ACONST_NULL);
-                    cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "org.mozilla.javascript.WrapFactory", "wrap",
-                            "(Lorg/mozilla/javascript/Context;Lorg/mozilla/javascript/Scriptable;"
-                            +  "Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;");
-                }
-                cfw.add(ByteCode.ARETURN);
-                cfw.stopMethod((short)7);
+                    cfw.add(ByteCode.ARETURN);
+                    cfw.stopMethod((short)7);
                 }
 
                 ClassLoader rhinoLoader = FunctionObject.class.getClassLoader();
