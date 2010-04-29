@@ -43,6 +43,8 @@ import org.mozilla.javascript.ObjArray;
 import org.mozilla.javascript.UintMap;
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * ClassFileWriter
@@ -165,6 +167,22 @@ public class ClassFileWriter {
             }
         }
         return new String(buf, 0, colonPos + 1);
+    }
+
+    /**
+     * Convert Java class to "Lname-with-dots-replaced-by-slashes;" form
+     * suitable for use as JVM type signatures. This includes support
+     * for arrays and primitive types such as int or boolean.
+     */
+    public static String classToSignature(Class<?> clazz)
+    {
+        if (clazz.isArray()) {
+            // arrays return their signature as name, e.g. "[B" for byte arrays
+            return "[" + classToSignature(clazz.getComponentType());
+        } else if (clazz.isPrimitive()) {
+            return primitiveSignatures.get(clazz);
+        }
+        return classNameToSignature(clazz.getName());
     }
 
     /**
@@ -2538,6 +2556,19 @@ public class ClassFileWriter {
             tmpCharBuffer = new char[newSize];
         }
         return tmpCharBuffer;
+    }
+
+    private static Map<Class<?>, String> primitiveSignatures = new HashMap<Class<?>, String>();
+    static {
+        primitiveSignatures.put(java.lang.Byte.TYPE, "B");
+        primitiveSignatures.put(java.lang.Character.TYPE, "C");
+        primitiveSignatures.put(java.lang.Double.TYPE, "D");
+        primitiveSignatures.put(java.lang.Float.TYPE, "F");
+        primitiveSignatures.put(java.lang.Integer.TYPE, "I");
+        primitiveSignatures.put(java.lang.Long.TYPE, "J");
+        primitiveSignatures.put(java.lang.Short.TYPE, "S");
+        primitiveSignatures.put(java.lang.Boolean.TYPE, "Z");
+        primitiveSignatures.put(java.lang.Void.TYPE, "V");
     }
 
     private static final int LineNumberTableSize = 16;
