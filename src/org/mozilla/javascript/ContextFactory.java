@@ -126,7 +126,7 @@ import java.security.PrivilegedAction;
                                Object, Object[])}
  *     protected Object doTopCall(Callable callable,
  *                                Context cx, Scriptable scope,
- *                                Scriptable thisObj, Object[] args)
+ *                                Object thisObj, Object[] args)
  *     {
  *         MyContext mcx = (MyContext)cx;
  *         mcx.startTime = System.currentTimeMillis();

@@ -687,7 +687,7 @@ public abstract class IdScriptableObject extends ScriptableObject
      * when converting script thisObj to a particular type is not possible.
      * Possible usage would be to have a private function like realThis:
      * <pre>
-     *  private static NativeSomething realThis(Scriptable thisObj,
+     *  private static NativeSomething realThis(Object thisObj,
      *                                          IdFunctionObject f)
      *  {
      *      if (!(thisObj instanceof NativeSomething))

@@ -158,14 +158,14 @@ public class Global extends ImporterTopLevel
      *
      * This method is defined as a JavaScript function.
      */
-    public static void help(Context cx, Scriptable thisObj,
+    public static void help(Context cx, Object thisObj,
                             Object[] args, Function funObj)
     {
         PrintStream out = getInstance(funObj).getOut();
         out.println(ToolErrorReporter.getMessage("msg.help"));
     }
 
-    public static void gc(Context cx, Scriptable thisObj,
+    public static void gc(Context cx, Object thisObj,
             Object[] args, Function funObj)
     {
         System.gc();
@@ -181,7 +181,7 @@ public class Global extends ImporterTopLevel
      * supplied to the JavaScript function.
      *
      */
-    public static Object print(Context cx, Scriptable thisObj,
+    public static Object print(Context cx, Object thisObj,
                                Object[] args, Function funObj)
     {
         PrintStream out = getInstance(funObj).getOut();
@@ -204,7 +204,7 @@ public class Global extends ImporterTopLevel
      *
      * This method is defined as a JavaScript function.
      */
-    public static void quit(Context cx, Scriptable thisObj,
+    public static void quit(Context cx, Object thisObj,
                             Object[] args, Function funObj)
     {
         Global global = getInstance(funObj);
@@ -220,7 +220,7 @@ public class Global extends ImporterTopLevel
      *
      * This method is defined as a JavaScript function.
      */
-    public static double version(Context cx, Scriptable thisObj,
+    public static double version(Context cx, Object thisObj,
                                  Object[] args, Function funObj)
     {
         double result = cx.getLanguageVersion();
@@ -237,11 +237,11 @@ public class Global extends ImporterTopLevel
      * This method is defined as a JavaScript function.
      *
      */
-    public static void load(Context cx, Scriptable thisObj,
+    public static void load(Context cx, Object thisObj,
                             Object[] args, Function funObj)
     {
         for (int i = 0; i < args.length; i++) {
-            Main.processFile(cx, thisObj, Context.toString(args[i]));
+            Main.processFile(cx, (Scriptable) thisObj, Context.toString(args[i]));
         }
     }
 
@@ -259,7 +259,7 @@ public class Global extends ImporterTopLevel
      * @see org.mozilla.javascript.ScriptableObject#defineClass(Scriptable,Class)
      */
     @SuppressWarnings({"unchecked"})
-    public static void defineClass(Context cx, Scriptable thisObj,
+    public static void defineClass(Context cx, Object thisObj,
                                    Object[] args, Function funObj)
         throws IllegalAccessException, InstantiationException,
                InvocationTargetException
@@ -268,7 +268,7 @@ public class Global extends ImporterTopLevel
         if (!Scriptable.class.isAssignableFrom(clazz)) {
             throw reportRuntimeError("msg.must.implement.Scriptable");
         }
-        ScriptableObject.defineClass(thisObj, (Class<? extends Scriptable>)clazz);
+        ScriptableObject.defineClass((Scriptable) thisObj, (Class<? extends Scriptable>)clazz);
     }
 
     /**
@@ -285,7 +285,7 @@ public class Global extends ImporterTopLevel
      * @exception InstantiationException if unable to instantiate
      *            the named class
      */
-    public static void loadClass(Context cx, Scriptable thisObj,
+    public static void loadClass(Context cx, Object thisObj,
                                  Object[] args, Function funObj)
         throws IllegalAccessException, InstantiationException
     {
@@ -294,7 +294,7 @@ public class Global extends ImporterTopLevel
             throw reportRuntimeError("msg.must.implement.Script");
         }
         Script script = (Script) clazz.newInstance();
-        script.exec(cx, thisObj);
+        script.exec(cx, (Scriptable) thisObj);
     }
 
     private static Class<?> getClass(Object[] args) {
@@ -316,7 +316,7 @@ public class Global extends ImporterTopLevel
         }
     }
 
-    public static void serialize(Context cx, Scriptable thisObj,
+    public static void serialize(Context cx, Object thisObj,
                                  Object[] args, Function funObj)
         throws IOException
     {
@@ -328,13 +328,13 @@ public class Global extends ImporterTopLevel
         Object obj = args[0];
         String filename = Context.toString(args[1]);
         FileOutputStream fos = new FileOutputStream(filename);
-        Scriptable scope = ScriptableObject.getTopLevelScope(thisObj);
+        Scriptable scope = ScriptableObject.getTopLevelScope((Scriptable) thisObj);
         ScriptableOutputStream out = new ScriptableOutputStream(fos, scope);
         out.writeObject(obj);
         out.close();
     }
 
-    public static Object deserialize(Context cx, Scriptable thisObj,
+    public static Object deserialize(Context cx, Object thisObj,
                                      Object[] args, Function funObj)
         throws IOException, ClassNotFoundException
     {
@@ -344,7 +344,7 @@ public class Global extends ImporterTopLevel
         }
         String filename = Context.toString(args[0]);
         FileInputStream fis = new FileInputStream(filename);
-        Scriptable scope = ScriptableObject.getTopLevelScope(thisObj);
+        Scriptable scope = ScriptableObject.getTopLevelScope((Scriptable) thisObj);
         ObjectInputStream in = new ScriptableInputStream(fis, scope);
         Object deserialized = in.readObject();
         in.close();
@@ -382,7 +382,7 @@ public class Global extends ImporterTopLevel
      * Example: doctest("js> function f() {\n  >   return 3;\n  > }\njs> f();\n3\n"); returns 2
      * (since 2 tests were executed).
      */
-    public static Object doctest(Context cx, Scriptable thisObj,
+    public static Object doctest(Context cx, Object thisObj,
                                  Object[] args, Function funObj)
     {
     	if (args.length == 0) {
@@ -529,7 +529,7 @@ public class Global extends ImporterTopLevel
      * js> a
      * 3
      */
-    public static Object spawn(Context cx, Scriptable thisObj, Object[] args,
+    public static Object spawn(Context cx, Object thisObj, Object[] args,
                                Function funObj)
     {
         Scriptable scope = funObj.getParentScope();
@@ -573,7 +573,7 @@ public class Global extends ImporterTopLevel
      * entry
      * exit
      */
-    public static Object sync(Context cx, Scriptable thisObj, Object[] args,
+    public static Object sync(Context cx, Object thisObj, Object[] args,
                               Function funObj)
     {
         if (args.length >= 1 && args.length <= 2 && args[0] instanceof Function) {
@@ -623,7 +623,7 @@ public class Global extends ImporterTopLevel
      *   value of the err property.
      * </ul>
      */
-    public static Object runCommand(Context cx, Scriptable thisObj,
+    public static Object runCommand(Context cx, Object thisObj,
                                     Object[] args, Function funObj)
         throws IOException
     {
@@ -694,7 +694,7 @@ public class Global extends ImporterTopLevel
             Object addArgsObj = ScriptableObject.getProperty(params, "args");
             if (addArgsObj != Scriptable.NOT_FOUND) {
                 Scriptable s = Context.toObject(addArgsObj,
-                                                getTopLevelScope(thisObj));
+                                                getTopLevelScope((Scriptable) thisObj));
                 addArgs = cx.getElements(s);
             }
         }
@@ -736,7 +736,7 @@ public class Global extends ImporterTopLevel
     /**
      * The seal function seals all supplied arguments.
      */
-    public static void seal(Context cx, Scriptable thisObj, Object[] args,
+    public static void seal(Context cx, Object thisObj, Object[] args,
                             Function funObj)
     {
         for (int i = 0; i != args.length; ++i) {
@@ -771,7 +771,7 @@ public class Global extends ImporterTopLevel
      * The first form converts file's context to string using the default
      * character coding.
      */
-    public static Object readFile(Context cx, Scriptable thisObj, Object[] args,
+    public static Object readFile(Context cx, Object thisObj, Object[] args,
                                   Function funObj)
         throws IOException
     {
@@ -801,7 +801,7 @@ public class Global extends ImporterTopLevel
      * The first form converts file's context to string using the default
      * charCoding.
      */
-    public static Object readUrl(Context cx, Scriptable thisObj, Object[] args,
+    public static Object readUrl(Context cx, Object thisObj, Object[] args,
                                  Function funObj)
         throws IOException
     {
@@ -820,7 +820,7 @@ public class Global extends ImporterTopLevel
     /**
      * Convert the argument to int32 number.
      */
-    public static Object toint32(Context cx, Scriptable thisObj, Object[] args,
+    public static Object toint32(Context cx, Object thisObj, Object[] args,
                                  Function funObj)
     {
         Object arg = (args.length != 0 ? args[0] : Undefined.instance);

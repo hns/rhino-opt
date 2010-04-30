@@ -189,7 +189,7 @@ public class File extends ScriptableObject {
      * @exception IOException if an error occurred while accessing the file
      *            associated with this object
      */
-    public static void jsFunction_write(Context cx, Scriptable thisObj,
+    public static void jsFunction_write(Context cx, Object thisObj,
                                         Object[] args, Function funObj)
         throws IOException
     {
@@ -204,7 +204,7 @@ public class File extends ScriptableObject {
      *            associated with this object
      *
      */
-    public static void jsFunction_writeLine(Context cx, Scriptable thisObj,
+    public static void jsFunction_writeLine(Context cx, Object thisObj,
                                             Object[] args, Function funObj)
         throws IOException
     {
@@ -297,7 +297,7 @@ public class File extends ScriptableObject {
      * newline character, move the code into a common subroutine.
      *
      */
-    private static void write0(Scriptable thisObj, Object[] args, boolean eol)
+    private static void write0(Object thisObj, Object[] args, boolean eol)
         throws IOException
     {
         File thisFile = checkInstance(thisObj);
@@ -335,7 +335,7 @@ public class File extends ScriptableObject {
      * The runtime will take care of such checks when non-static Java methods
      * are defined as JavaScript functions.
      */
-    private static File checkInstance(Scriptable obj) {
+    private static File checkInstance(Object obj) {
         if (obj == null || !(obj instanceof File)) {
             throw Context.reportRuntimeError("called on incompatible object");
         }

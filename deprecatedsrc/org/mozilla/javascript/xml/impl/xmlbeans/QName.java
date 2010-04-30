@@ -271,7 +271,7 @@ final class QName extends IdScriptableObject
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    private QName realThis(Scriptable thisObj, IdFunctionObject f)
+    private QName realThis(Object thisObj, IdFunctionObject f)
     {
         if(!(thisObj instanceof QName))
             throw incompatibleCallError(f);

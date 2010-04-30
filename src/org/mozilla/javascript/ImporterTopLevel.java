@@ -159,7 +159,7 @@ public class ImporterTopLevel extends IdScriptableObject
     /**
      * @deprecated Kept only for compatibility.
      */
-    public void importPackage(Context cx, Scriptable thisObj, Object[] args,
+    public void importPackage(Context cx, Object thisObj, Object[] args,
                               Function funObj)
     {
         js_importPackage(args);

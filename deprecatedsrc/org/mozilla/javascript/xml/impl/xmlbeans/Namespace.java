@@ -285,7 +285,7 @@ class Namespace extends IdScriptableObject
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    private Namespace realThis(Scriptable thisObj, IdFunctionObject f)
+    private Namespace realThis(Object thisObj, IdFunctionObject f)
     {
         if(!(thisObj instanceof Namespace))
             throw incompatibleCallError(f);

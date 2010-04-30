@@ -144,7 +144,7 @@ public class FunctionObject extends BaseFunction
             } else {
                 if (!isStatic ||
                     types[0] != ScriptRuntime.ContextClass ||
-                    types[1] != ScriptRuntime.ScriptableClass ||
+                    types[1] != ScriptRuntime.ObjectClass ||
                     types[2].getComponentType() != ScriptRuntime.ObjectClass ||
                     types[3] != ScriptRuntime.FunctionClass)
                 {
