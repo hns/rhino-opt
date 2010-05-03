@@ -3282,7 +3282,7 @@ class BodyCodegen
                             +"Lorg/mozilla/javascript/Scriptable;"
                             +"[Ljava/lang/Object;"
                             +"Lorg/mozilla/javascript/Scriptable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"I" // call type
                             +"Ljava/lang/String;I"  // filename, linenumber
                             +")Ljava/lang/Object;";
