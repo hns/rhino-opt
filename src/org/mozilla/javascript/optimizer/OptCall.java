@@ -49,7 +49,7 @@ public abstract class OptCall extends ScriptableObject {
             if (index < 0 || index >= length) {
                 return super.get(index, start);
             }
-            return getArgument(index);
+            return args[index];
         }
 
         @Override
