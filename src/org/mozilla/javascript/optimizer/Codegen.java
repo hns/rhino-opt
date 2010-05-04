@@ -44,11 +44,14 @@
 package org.mozilla.javascript.optimizer;
 
 import org.mozilla.javascript.*;
+import org.mozilla.javascript.ast.AstNode;
 import org.mozilla.javascript.ast.FunctionNode;
 import org.mozilla.javascript.ast.Jump;
 import org.mozilla.javascript.ast.Name;
 import org.mozilla.javascript.ast.ScriptNode;
 import org.mozilla.classfile.*;
+import org.mozilla.javascript.ast.Symbol;
+
 import java.util.*;
 import java.lang.reflect.Constructor;
 
@@ -104,8 +107,8 @@ public class Codegen implements Evaluator
         byte[] mainClassBytes = compileToClassFile(compilerEnv, mainClassName,
                                                    tree, encodedSource,
                                                    returnFunction);
-
-        return new Object[] { mainClassName, mainClassBytes };
+        classes.put(mainClassName, mainClassBytes);
+        return classes;
     }
 
     public Script createScriptObject(Object bytecode,
@@ -144,9 +147,7 @@ public class Codegen implements Evaluator
     private Class<?> defineClass(Object bytecode,
                                  Object staticSecurityDomain)
     {
-        Object[] nameBytesPair = (Object[])bytecode;
-        String className = (String)nameBytesPair[0];
-        byte[] classBytes = (byte[])nameBytesPair[1];
+        Map<String, byte[]> classMap = (Map<String, byte[]>)bytecode;
 
         // The generated classes in this case refer only to Rhino classes
         // which must be accessible through this class loader
@@ -154,17 +155,28 @@ public class Codegen implements Evaluator
         GeneratedClassLoader loader;
         loader = SecurityController.createLoader(rhinoLoader,
                                                  staticSecurityDomain);
-        Exception e;
+        Exception e = null;
+        Class<?> mainClass = null;
+        List<Class<?>> classes = new ArrayList<Class<?>>();
         try {
-            Class<?> cl = loader.defineClass(className, classBytes);
-            loader.linkClass(cl);
-            return cl;
+            for (Map.Entry<String, byte[]> entry : classMap.entrySet()) {
+                classes.add(loader.defineClass(entry.getKey(), entry.getValue()));
+            }
+            for (Class<?> clazz : classes) {
+                loader.linkClass(clazz);
+                if (!clazz.getName().endsWith("_scope")) {
+                    mainClass = clazz;
+                }
+            }
         } catch (SecurityException x) {
             e = x;
         } catch (IllegalArgumentException x) {
             e = x;
         }
-        throw new RuntimeException("Malformed optimizer package " + e);
+        if (e != null) {
+            throw new RuntimeException("Malformed optimizer package " + e);
+        }
+        return mainClass; 
     }
 
     byte[] compileToClassFile(CompilerEnvirons compilerEnv,
@@ -1350,6 +1362,9 @@ public class Codegen implements Evaluator
     String mainClassName;
     String mainClassSignature;
 
+    Map<String, byte[]> classes = new HashMap<String, byte[]>();
+    Map<AstNode, ActivationScope> scopes = new HashMap<AstNode, ActivationScope>();
+
     private double[] itsConstantList;
     private int itsConstantListSize;
 }
@@ -1379,10 +1394,28 @@ class BodyCodegen
                     (short)(ClassFileWriter.ACC_STATIC
                             | ClassFileWriter.ACC_PRIVATE));
         } else {
-            cfw.startMethod(codegen.getBodyMethodName(scriptOrFn),
+            String methodName = codegen.getBodyMethodName(scriptOrFn);
+            cfw.startMethod(methodName,
                     codegen.getBodyMethodSignature(scriptOrFn),
                     (short)(ClassFileWriter.ACC_STATIC
                             | ClassFileWriter.ACC_PRIVATE));
+            if (fnCurrent != null) {
+                if (!hasVarsInRegs) {
+                    // create companion scope
+                    String scopeClassName = codegen.mainClassName + methodName + "_scope";
+                    codegen.classes.put(scopeClassName,
+                            createCompanionScope(scopeClassName, scriptOrFn));
+                }
+                scopes = new ArrayList<ActivationScope>();
+                AstNode fn = scriptOrFn;
+                while (fn != null) {
+                    ActivationScope scope = codegen.scopes.get(fn);
+                    if (scope != null) {
+                        scopes.add(scope);
+                    }
+                    fn = fn.getEnclosingFunction();
+                }
+            }
         }
 
         generatePrologue();
@@ -1402,6 +1435,105 @@ class BodyCodegen
             // return a generator object
             generateGenerator();
         }
+    }
+
+    String ACTIVATION_BASECLASS = "org.mozilla.javascript.optimizer.OptCall";
+    String ACTIVATION_INIT = "(Lorg/mozilla/javascript/Scriptable;[Ljava/lang/Object;)V";
+
+    byte[] createCompanionScope(String className, ScriptNode scriptOrFn) {
+
+        ClassFileWriter sfw = new ClassFileWriter(className, ACTIVATION_BASECLASS, null);
+
+        sfw.startMethod("<init>", ACTIVATION_INIT, (short)0);
+        sfw.addLoadThis();
+        sfw.addALoad(1);
+        sfw.addALoad(2);
+        sfw.addInvoke(ByteCode.INVOKESPECIAL, ACTIVATION_BASECLASS, "<init>", ACTIVATION_INIT);
+        sfw.addALoad(2); // args array
+        sfw.add(ByteCode.ARRAYLENGTH);
+        sfw.addIStore(3);
+        // initialized arguments
+        int paramCount = scriptOrFn.getParamCount();
+        for (int i = 0; i < paramCount; i++) {
+            int undefinedArg = sfw.acquireLabel();
+            int done = sfw.acquireLabel();
+            sfw.addLoadThis();
+            sfw.addLoadConstant(i);
+            sfw.addILoad(3);
+            sfw.add(ByteCode.IF_ICMPGE, undefinedArg);
+            sfw.addALoad(2);
+            sfw.addLoadConstant(i);
+            sfw.add(ByteCode.AALOAD);
+            sfw.add(ByteCode.GOTO, done);
+            sfw.markLabel(undefinedArg);
+            sfw.add(ByteCode.GETSTATIC, "org/mozilla/javascript/Undefined",
+                "instance", "Ljava/lang/Object;");
+            sfw.markLabel(done);
+            String name = scriptOrFn.getParamOrVarName(i);
+            sfw.add(ByteCode.PUTFIELD, className, name, "Ljava/lang/Object;");
+        }
+        // initialize local vars
+        int symbolCount = scriptOrFn.getParamAndVarCount();
+        for (int i = paramCount; i < symbolCount; i++) {
+            sfw.addLoadThis();
+            sfw.add(ByteCode.GETSTATIC, "org/mozilla/javascript/Undefined",
+                "instance", "Ljava/lang/Object;");
+            String name = scriptOrFn.getParamOrVarName(i);
+            sfw.add(ByteCode.PUTFIELD, className, name, "Ljava/lang/Object;");
+        }
+        sfw.add(ByteCode.RETURN);
+        sfw.stopMethod((short)4);
+
+        sfw.startMethod("getArgument", "(I)Ljava/lang/Object;", ClassFileWriter.ACC_PROTECTED);
+        if (paramCount > 0) {
+            sfw.addILoad(1);
+            int switchStart = sfw.addTableSwitch(0, paramCount - 1);
+            sfw.markTableSwitchDefault(switchStart);
+            sfw.add(ByteCode.GETSTATIC, "org/mozilla/javascript/Scriptable",
+                    "NOT_FOUND", "Ljava/lang/Object;");
+            sfw.add(ByteCode.ARETURN);
+            for (int i = 0; i < paramCount; i++) {
+                sfw.markTableSwitchCase(switchStart, i);
+                sfw.addLoadThis();
+                String name = scriptOrFn.getParamOrVarName(i);
+                sfw.add(ByteCode.GETFIELD, className, name, "Ljava/lang/Object;");
+                sfw.add(ByteCode.ARETURN);
+            }
+        } else {
+            sfw.add(ByteCode.GETSTATIC, "org/mozilla/javascript/Scriptable",
+                    "NOT_FOUND", "Ljava/lang/Object;");
+            sfw.add(ByteCode.ARETURN);
+        }
+        sfw.stopMethod((short)2);
+
+        sfw.startMethod("putArgument", "(ILjava/lang/Object;)V", ClassFileWriter.ACC_PROTECTED);
+        if (paramCount > 0) {
+            sfw.addILoad(1);
+            int switchStart = sfw.addTableSwitch(0, paramCount - 1);
+            for (int i = 0; i < paramCount; i++) {
+                sfw.markTableSwitchCase(switchStart, i);
+                sfw.addLoadThis();
+                sfw.addALoad(2);
+                String name = scriptOrFn.getParamOrVarName(i);
+                sfw.add(ByteCode.PUTFIELD, className, name, "Ljava/lang/Object;");
+                sfw.add(ByteCode.RETURN);
+            }
+        } else {
+            sfw.add(ByteCode.RETURN);
+        }
+        sfw.stopMethod((short)3);
+
+        ActivationScope scope = new ActivationScope();
+        scope.className = className;
+        Set<String> symbols = scope.symbols = new HashSet<String>();
+        symbols.add("arguments");
+        for (Symbol symbol : scriptOrFn.getSymbols()) {
+            symbols.add(symbol.getName());
+            sfw.addField(symbol.getName(), "Ljava/lang/Object;", (short)0);
+        }
+
+        codegen.scopes.put(scriptOrFn, scope);
+        return sfw.toByteArray();
     }
 
     // This creates a the user-facing function that returns a NativeGenerator
@@ -1730,21 +1862,32 @@ class BodyCodegen
         String debugVariableName;
         if (fnCurrent != null) {
             debugVariableName = "activation";
-            cfw.addALoad(funObjLocal);
-            cfw.addALoad(variableObjectLocal);
-            cfw.addALoad(argsLocal);
-            addScriptRuntimeInvoke("createFunctionActivation",
-                                   "(Lorg/mozilla/javascript/NativeFunction;"
-                                   +"Lorg/mozilla/javascript/Scriptable;"
-                                   +"[Ljava/lang/Object;"
-                                   +")Lorg/mozilla/javascript/Scriptable;");
-            cfw.addAStore(variableObjectLocal);
-            cfw.addALoad(contextLocal);
-            cfw.addALoad(variableObjectLocal);
-            addScriptRuntimeInvoke("enterActivationFunction",
-                                   "(Lorg/mozilla/javascript/Context;"
-                                   +"Lorg/mozilla/javascript/Scriptable;"
-                                   +")V");
+            ActivationScope scope = codegen.scopes.get(scriptOrFn);
+            if (scope != null) {
+                cfw.add(ByteCode.NEW, scope.className);
+                cfw.add(ByteCode.DUP);
+                cfw.addALoad(variableObjectLocal);
+                cfw.addALoad(argsLocal);
+                cfw.addInvoke(ByteCode.INVOKESPECIAL, scope.className, "<init>",
+                        ACTIVATION_INIT);
+                cfw.addAStore(variableObjectLocal);
+            } else {
+                cfw.addALoad(funObjLocal);
+                cfw.addALoad(variableObjectLocal);
+                cfw.addALoad(argsLocal);
+                addScriptRuntimeInvoke("createFunctionActivation",
+                                       "(Lorg/mozilla/javascript/NativeFunction;"
+                                       +"Lorg/mozilla/javascript/Scriptable;"
+                                       +"[Ljava/lang/Object;"
+                                       +")Lorg/mozilla/javascript/Scriptable;");
+                cfw.addAStore(variableObjectLocal);
+                cfw.addALoad(contextLocal);
+                cfw.addALoad(variableObjectLocal);
+                addScriptRuntimeInvoke("enterActivationFunction",
+                                       "(Lorg/mozilla/javascript/Context;"
+                                       +"Lorg/mozilla/javascript/Scriptable;"
+                                       +")V");
+            }
         } else {
             debugVariableName = "global";
             cfw.addALoad(funObjLocal);
@@ -1942,9 +2085,14 @@ class BodyCodegen
     private void generateActivationExit()
     {
         if (fnCurrent == null || hasVarsInRegs) throw Kit.codeBug();
-        cfw.addALoad(contextLocal);
-        addScriptRuntimeInvoke("exitActivationFunction",
-                               "(Lorg/mozilla/javascript/Context;)V");
+        ActivationScope scope = codegen.scopes.get(scriptOrFn);
+        if (scope != null) {
+            // anything to do here?
+        } else {
+            cfw.addALoad(contextLocal);
+            addScriptRuntimeInvoke("exitActivationFunction",
+                                   "(Lorg/mozilla/javascript/Context;)V");
+        }
     }
 
     private void generateStatement(Node node)
@@ -2275,8 +2423,28 @@ class BodyCodegen
 
               case Token.NAME:
                 {
+                    int length = scopes == null ? 0 : scopes.size();
+                    String name = node.getString();
+                    for (int i = 0; i < length; i++) {
+                        ActivationScope scope = scopes.get(i);
+                        if (scope.symbols.contains(name)) {
+                            cfw.addALoad(variableObjectLocal);
+                            for (int j = 0; j < i; j++) {
+                                cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                                        "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                            }
+                            cfw.add(ByteCode.CHECKCAST, scope.className);
+                            cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                            return;
+                        }
+                    }
                     cfw.addALoad(contextLocal);
                     cfw.addALoad(variableObjectLocal);
+                    for (int i = 0; i < length; i++) {
+                        // name is not in activation scope, unwind to first non-activation scope
+                        cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                                "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                    }
                     cfw.addPush(node.getString());
                     addScriptRuntimeInvoke(
                         "name",
@@ -2748,6 +2916,20 @@ class BodyCodegen
                         child = child.getNext();
                     }
                     // Generate code for "ScriptRuntime.bind(varObj, "s")"
+                    int length = scopes == null ? 0 : scopes.size();
+                    String name = node.getString();
+                    for (int i = 0; i < length; i++) {
+                        ActivationScope scope = scopes.get(i);
+                        if (scope.symbols.contains(name)) {
+                            cfw.addALoad(variableObjectLocal);
+                            for (int j = 0; j < i; j++) {
+                                cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                                        "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                            }
+                            cfw.add(ByteCode.CHECKCAST, scope.className);
+                            return;
+                        }
+                    }
                     cfw.addALoad(contextLocal);
                     cfw.addALoad(variableObjectLocal);
                     cfw.addPush(node.getString());
@@ -4060,6 +4242,27 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             }
             break;
           case Token.NAME:
+              int length = scopes == null ? 0 : scopes.size();
+              String name = child.getString();
+              for (int i = 0; i < length; i++) {
+                  ActivationScope scope = scopes.get(i);
+                  if (scope.symbols.contains(name)) {
+                      cfw.addALoad(variableObjectLocal);
+                      for (int j = 0; j < i; j++) {
+                          cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                                  "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                      }
+                      cfw.add(ByteCode.CHECKCAST, scope.className);
+                      cfw.add(ByteCode.DUP);
+                      cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                      cfw.addPush(incrDecrMask);
+                      addOptRuntimeInvoke("valueIncrDecr", "(Ljava/lang/Object;I)Ljava/lang/Object;");
+                      cfw.add(ByteCode.DUP_X1);
+                      cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
+                      return;
+                  }
+              }
+
             cfw.addALoad(variableObjectLocal);
             cfw.addPush(child.getString());          // push name
             cfw.addALoad(contextLocal);
@@ -4472,6 +4675,16 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
         while (child != null) {
             generateExpression(child, node);
             child = child.getNext();
+        }
+        int length = scopes == null ? 0 : scopes.size();
+        for (int i = 0; i < length; i++) {
+            ActivationScope scope = scopes.get(i);
+            if (scope.symbols.contains(name)) {
+                // value must remain on the stack after setName has finished
+                cfw.add(ByteCode.DUP_X1);
+                cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
+                return;
+            }
         }
         cfw.addALoad(contextLocal);
         cfw.addALoad(variableObjectLocal);
@@ -5098,8 +5311,15 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
 
     private Map<Node,FinallyReturnPoint> finallys;
 
+    private List<ActivationScope> scopes;
+
     static class FinallyReturnPoint {
         public List<Integer> jsrPoints  = new ArrayList<Integer>();
         public int tableLabel = 0;        
     }
+}
+
+class ActivationScope {
+    String className;
+    Set<String> symbols;
 }

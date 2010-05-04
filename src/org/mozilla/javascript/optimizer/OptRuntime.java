@@ -144,6 +144,27 @@ public final class OptRuntime extends ScriptRuntime
                                           incrDecrMask);
     }
 
+    public static Object valueIncrDecr(Object value, int incrDecrMask)
+    {
+        boolean post = ((incrDecrMask & Node.POST_FLAG) != 0);
+        double number;
+        if (value instanceof Number) {
+            number = ((Number)value).doubleValue();
+        } else {
+            number = toNumber(value);
+            if (post) {
+                // convert result to number
+                value = wrapNumber(number);
+            }
+        }
+        if ((incrDecrMask & Node.DECR_FLAG) == 0) {
+            ++number;
+        } else {
+            --number;
+        }
+        return wrapNumber(number);
+    }
+
     public static Object[] padStart(Object[] currentArgs, int count) {
         Object[] result = new Object[currentArgs.length + count];
         System.arraycopy(currentArgs, 0, result, count, currentArgs.length);
