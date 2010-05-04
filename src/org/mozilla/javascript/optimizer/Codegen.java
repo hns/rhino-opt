@@ -4146,8 +4146,26 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
                 return;
             }
         }
+        String name = node.getString();
+        int length = scopes == null ? 0 : scopes.size();
+        for (int i = 0; i < length; i++) {
+            ActivationScope scope = scopes.get(i);
+            if (scope.symbols.contains(name)) {
+                cfw.addALoad(variableObjectLocal);
+                for (int j = 0; j < i; j++) {
+                    cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                            "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                }
+                cfw.add(ByteCode.CHECKCAST, scope.className);
+                cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                addScriptRuntimeInvoke("typeof",
+                                       "(Ljava/lang/Object;"
+                                       +")Ljava/lang/String;");
+                return;
+            }
+        }
         cfw.addALoad(variableObjectLocal);
-        cfw.addPush(node.getString());
+        cfw.addPush(name);
         addScriptRuntimeInvoke("typeofName",
                                "(Lorg/mozilla/javascript/Scriptable;"
                                +"Ljava/lang/String;"
