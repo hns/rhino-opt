@@ -1671,6 +1671,8 @@ class BodyCodegen
         epilogueLabel = -1;
         enterAreaStartLabel = -1;
         generatorStateLocal = -1;
+        incrDecrPostLocal = -1;
+        incrDecrValueLocal = -1;
     }
 
     /**
@@ -4373,12 +4375,66 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
               String name = child.getString();
               ActivationScope scope = bindNameInCompanionScopes(name);
               if (scope != null) {
+                  if (incrDecrPostLocal == -1) {
+                      incrDecrPostLocal = getNewWordLocal();
+                      incrDecrValueLocal = getNewWordLocal();
+                  }
+                  int isNumberObject = cfw.acquireLabel(),
+                      isDouble = cfw.acquireLabel(),
+                      postIncr = cfw.acquireLabel(),
+                      isDecr = cfw.acquireLabel(),
+                      isReady = cfw.acquireLabel();
+                  // init local value slot
+                  cfw.add(ByteCode.ACONST_NULL);
+                  cfw.addAStore(incrDecrValueLocal);
+                  // init localpost flag
+                  cfw.addPush(incrDecrMask);
+                  cfw.add(ByteCode.GETSTATIC, "org.mozilla.javascript.Node", "POST_FLAG", "I");
+                  cfw.add(ByteCode.IAND);
+                  cfw.addIStore(incrDecrPostLocal);
+                  // keep activation on stack and get field value
                   cfw.add(ByteCode.DUP);
                   cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                  // activation, value
+                  // check if current value is a Number object already
+                  cfw.add(ByteCode.DUP);
+                  cfw.add(ByteCode.INSTANCEOF, "java.lang.Number");
+                  cfw.add(ByteCode.IFNE, isNumberObject);
+                  addScriptRuntimeInvoke("toNumber", "(Ljava/lang/Object;)D");
+                  // if post incr/decr, we need to convert the original value to a number object
+                  cfw.addILoad(incrDecrPostLocal);
+                  cfw.add(ByteCode.IFEQ, isDouble);
+                  cfw.add(ByteCode.DUP2);
+                  cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Double", "valueOf", "(D)Ljava/lang/Double;");
+                  cfw.addAStore(incrDecrValueLocal);
+                  cfw.add(ByteCode.GOTO, isDouble);
+                  cfw.markLabel(isNumberObject);
+                  cfw.add(ByteCode.CHECKCAST, "java.lang.Number");
+                  // store in value slot in case we need it
+                  cfw.add(ByteCode.DUP);
+                  cfw.addAStore(incrDecrValueLocal);
+                  // convert to double
+                  cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java.lang.Number", "doubleValue", "()D");
+                  cfw.markLabel(isDouble);
                   cfw.addPush(incrDecrMask);
-                  addOptRuntimeInvoke("valueIncrDecr", "(Ljava/lang/Object;I)Ljava/lang/Object;");
-                  cfw.add(ByteCode.DUP_X1);
+                  cfw.add(ByteCode.GETSTATIC, "org.mozilla.javascript.Node", "DECR_FLAG", "I");
+                  cfw.add(ByteCode.IAND);
+                  cfw.add(ByteCode.IFNE, isDecr);
+                  cfw.addPush(1d);
+                  cfw.add(ByteCode.GOTO, isReady);
+                  cfw.markLabel(isDecr);
+                  cfw.addPush(-1d);
+                  cfw.markLabel(isReady);
+                  cfw.add(ByteCode.DADD);
+                  // activation, result
+                  cfw.addInvoke(ByteCode.INVOKESTATIC, "java.lang.Double", "valueOf", "(D)Ljava/lang/Double;");
+                  cfw.addILoad(incrDecrPostLocal);
+                  cfw.add(ByteCode.IFNE, postIncr);
+                  cfw.add(ByteCode.DUP);
+                  cfw.addAStore(incrDecrValueLocal);
+                  cfw.markLabel(postIncr);
                   cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
+                  cfw.addALoad(incrDecrValueLocal);
                   return;
             }
 
@@ -5395,7 +5451,7 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
     private OptFunctionNode fnCurrent;
     private boolean isTopLevel;
 
-    private static final int MAX_LOCALS = 256;
+    private static final int MAX_LOCALS = 1024;
     private int[] locals;
     private short firstFreeLocal;
     private short localsMax;
@@ -5422,6 +5478,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
     private short itsOneArgArray;
     private short scriptRegexpLocal;
     private short generatorStateLocal;
+    private short incrDecrPostLocal;
+    private short incrDecrValueLocal;
 
     private boolean isGenerator;
     private int generatorSwitch;

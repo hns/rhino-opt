@@ -144,27 +144,6 @@ public final class OptRuntime extends ScriptRuntime
                                           incrDecrMask);
     }
 
-    public static Object valueIncrDecr(Object value, int incrDecrMask)
-    {
-        boolean post = ((incrDecrMask & Node.POST_FLAG) != 0);
-        double number;
-        if (value instanceof Number) {
-            number = ((Number)value).doubleValue();
-        } else {
-            number = toNumber(value);
-            if (post) {
-                // convert result to number
-                value = wrapNumber(number);
-            }
-        }
-        if ((incrDecrMask & Node.DECR_FLAG) == 0) {
-            ++number;
-        } else {
-            --number;
-        }
-        return wrapNumber(number);
-    }
-
     public static Object[] padStart(Object[] currentArgs, int count) {
         Object[] result = new Object[currentArgs.length + count];
         System.arraycopy(currentArgs, 0, result, count, currentArgs.length);
@@ -343,7 +322,7 @@ public final class OptRuntime extends ScriptRuntime
             scope = scope.getParentScope();
         }
         if (scope == null) {
-            throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+            throw Context.reportRuntimeError("unwindScopeLookingForName called with invalid scope chain");
         }
         for (int i = 0; i < n; i++) {
             // unwind
@@ -356,7 +335,7 @@ public final class OptRuntime extends ScriptRuntime
                 scope = scope.getParentScope();
             }
             if (scope == null) {
-                throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+                throw Context.reportRuntimeError("unwindScopeLookingForName called with invalid scope chain");
             }
         }
         return scope;
@@ -369,7 +348,7 @@ public final class OptRuntime extends ScriptRuntime
             scope = scope.getParentScope();
         }
         if (scope == null) {
-            throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+            throw Context.reportRuntimeError("bindFunctionScope called with invalid scope chain");
         }
         for (int i = 0; i < n; i++) {
             // unwind
@@ -379,7 +358,7 @@ public final class OptRuntime extends ScriptRuntime
                 scope = scope.getParentScope();
             }
             if (scope == null) {
-                throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+                throw Context.reportRuntimeError("bindFunctionScope called with invalid scope chain");
             }
         }
         return scope;
