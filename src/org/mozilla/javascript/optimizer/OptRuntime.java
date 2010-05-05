@@ -329,4 +329,60 @@ public final class OptRuntime extends ScriptRuntime
             this.maxStack = maxStack;
         }
     }
+
+    // unwinds scope chain to the n-th function activation parent scope, looking for property
+    // name in all non-function activation scopes found along the way. Returns the value
+    // if the property was found, otherwise the n-th activation scope.
+    public static Object unwindScopeLookingForName(Scriptable scope, int n, String name) {
+        // check and unwind leading non-activation scopes
+        // TODO: requires special treatment for NativeWith/XMLObject (see ScriptRuntime.bind())
+        while(scope != null && !(scope instanceof OptCall)) {
+            if (ScriptableObject.hasProperty(scope, name)) {
+                return ScriptableObject.getProperty(scope, name);
+            }
+            scope = scope.getParentScope();
+        }
+        if (scope == null) {
+            throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+        }
+        for (int i = 0; i < n; i++) {
+            // unwind
+            scope = scope.getParentScope();
+            // check trailing in-between scopes up to next activation scope
+            while(scope != null && !(scope instanceof OptCall)) {
+                if (ScriptableObject.hasProperty(scope, name)) {
+                    return ScriptableObject.getProperty(scope, name);
+                }
+                scope = scope.getParentScope();
+            }
+            if (scope == null) {
+                throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+            }
+        }
+        return scope;
+    }
+
+    public static Scriptable bindFunctionScope(Scriptable scope, int n) {
+        // check and unwind leading non-activation scopes
+        // TODO: requires special treatment for NativeWith/XMLObject (see ScriptRuntime.bind())
+        while(scope != null && !(scope instanceof OptCall)) {
+            scope = scope.getParentScope();
+        }
+        if (scope == null) {
+            throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+        }
+        for (int i = 0; i < n; i++) {
+            // unwind
+            scope = scope.getParentScope();
+            // check trailing in-between scopes up to next activation scope
+            while(scope != null && !(scope instanceof OptCall)) {
+                scope = scope.getParentScope();
+            }
+            if (scope == null) {
+                throw new RuntimeException("unwindScopeLookingForName called with invalid scope chain");
+            }
+        }
+        return scope;
+    }
+
 }

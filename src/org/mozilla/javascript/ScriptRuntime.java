@@ -2508,7 +2508,7 @@ public class ScriptRuntime {
     {
         if (arg1 == null || arg1 == Undefined.instance) {
             return ScriptRuntime.emptyArgs;
-        } else if (arg1 instanceof NativeArray || arg1 instanceof Arguments) {
+        } else if (arg1 instanceof NativeArray || arg1 instanceof ScriptableObject) {
             return cx.getElements((Scriptable) arg1);
         } else {
             throw ScriptRuntime.typeError0("msg.arg.isnt.array");

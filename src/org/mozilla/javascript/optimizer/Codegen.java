@@ -1438,7 +1438,7 @@ class BodyCodegen
     }
 
     String ACTIVATION_BASECLASS = "org.mozilla.javascript.optimizer.OptCall";
-    String ACTIVATION_INIT = "(Lorg/mozilla/javascript/Scriptable;[Ljava/lang/Object;)V";
+    String ACTIVATION_INIT = "(Lorg/mozilla/javascript/NativeFunction;Lorg/mozilla/javascript/Scriptable;[Ljava/lang/Object;)V";
 
     byte[] createCompanionScope(String className, ScriptNode scriptOrFn) {
 
@@ -1448,10 +1448,11 @@ class BodyCodegen
         sfw.addLoadThis();
         sfw.addALoad(1);
         sfw.addALoad(2);
+        sfw.addALoad(3);
         sfw.addInvoke(ByteCode.INVOKESPECIAL, ACTIVATION_BASECLASS, "<init>", ACTIVATION_INIT);
-        sfw.addALoad(2); // args array
+        sfw.addALoad(3); // args array
         sfw.add(ByteCode.ARRAYLENGTH);
-        sfw.addIStore(3);
+        sfw.addIStore(4);
         // initialized arguments
         int paramCount = scriptOrFn.getParamCount();
         for (int i = 0; i < paramCount; i++) {
@@ -1459,9 +1460,9 @@ class BodyCodegen
             int done = sfw.acquireLabel();
             sfw.addLoadThis();
             sfw.addLoadConstant(i);
-            sfw.addILoad(3);
+            sfw.addILoad(4);
             sfw.add(ByteCode.IF_ICMPGE, undefinedArg);
-            sfw.addALoad(2);
+            sfw.addALoad(3);
             sfw.addLoadConstant(i);
             sfw.add(ByteCode.AALOAD);
             sfw.add(ByteCode.GOTO, done);
@@ -1482,7 +1483,7 @@ class BodyCodegen
             sfw.add(ByteCode.PUTFIELD, className, name, "Ljava/lang/Object;");
         }
         sfw.add(ByteCode.RETURN);
-        sfw.stopMethod((short)4);
+        sfw.stopMethod((short)5);
 
         sfw.startMethod("getArgument", "(I)Ljava/lang/Object;", ClassFileWriter.ACC_PROTECTED);
         if (paramCount > 0) {
@@ -1615,7 +1616,10 @@ class BodyCodegen
         cfw.stopMethod((short)(localsMax + 1));
     }
 
-    private void generateNestedFunctionInits()
+    private void generateNestedFunctionInits() {
+        generateNestedFunctionInits(null);
+    }
+    private void generateNestedFunctionInits(ActivationScope scope)
     {
         int functionCount = scriptOrFn.getFunctionCount();
         for (int i = 0; i != functionCount; i++) {
@@ -1623,7 +1627,7 @@ class BodyCodegen
             if (ofn.fnode.getFunctionType()
                     == FunctionNode.FUNCTION_STATEMENT)
             {
-                visitFunction(ofn, FunctionNode.FUNCTION_STATEMENT);
+                visitFunction(ofn, FunctionNode.FUNCTION_STATEMENT, scope);
             }
         }
     }
@@ -1858,14 +1862,15 @@ class BodyCodegen
         if (isGenerator)
             return;
 
-
+        ActivationScope scope = null;
         String debugVariableName;
         if (fnCurrent != null) {
             debugVariableName = "activation";
-            ActivationScope scope = codegen.scopes.get(scriptOrFn);
+            scope = codegen.scopes.get(scriptOrFn);
             if (scope != null) {
                 cfw.add(ByteCode.NEW, scope.className);
                 cfw.add(ByteCode.DUP);
+                cfw.addALoad(funObjLocal);
                 cfw.addALoad(variableObjectLocal);
                 cfw.addALoad(argsLocal);
                 cfw.addInvoke(ByteCode.INVOKESPECIAL, scope.className, "<init>",
@@ -1908,7 +1913,7 @@ class BodyCodegen
         epilogueLabel = cfw.acquireLabel();
         cfw.markLabel(enterAreaStartLabel);
 
-        generateNestedFunctionInits();
+        generateNestedFunctionInits(scope);
 
         // default is to generate debug info
         if (compilerEnv.isGenerateDebugInfo()) {
@@ -2140,7 +2145,7 @@ class BodyCodegen
                 OptFunctionNode ofn = OptFunctionNode.get(scriptOrFn, fnIndex);
                 int t = ofn.fnode.getFunctionType();
                 if (t == FunctionNode.FUNCTION_EXPRESSION_STATEMENT) {
-                    visitFunction(ofn, t);
+                    visitFunction(ofn, t, null);
                 } else {
                     if (t != FunctionNode.FUNCTION_STATEMENT) {
                         throw Codegen.badTree();
@@ -2417,7 +2422,7 @@ class BodyCodegen
                     if (t != FunctionNode.FUNCTION_EXPRESSION) {
                         throw Codegen.badTree();
                     }
-                    visitFunction(ofn, t);
+                    visitFunction(ofn, t, null);
                 }
                 break;
 
@@ -2425,26 +2430,22 @@ class BodyCodegen
                 {
                     int length = scopes == null ? 0 : scopes.size();
                     String name = node.getString();
-                    for (int i = 0; i < length; i++) {
-                        ActivationScope scope = scopes.get(i);
-                        if (scope.symbols.contains(name)) {
-                            cfw.addALoad(variableObjectLocal);
-                            for (int j = 0; j < i; j++) {
-                                cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
-                                        "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
-                            }
-                            cfw.add(ByteCode.CHECKCAST, scope.className);
-                            cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
-                            return;
-                        }
+                    // try to statically resolve name in activation scopes
+                    if (getNameInCompanionScopes(name)) {
+                        return;
                     }
                     cfw.addALoad(contextLocal);
+                    int skipShortcut = cfw.acquireLabel();
                     cfw.addALoad(variableObjectLocal);
                     for (int i = 0; i < length; i++) {
                         // name is not in activation scope, unwind to first non-activation scope
+                        cfw.add(ByteCode.DUP);
+                        cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                        cfw.add(ByteCode.IFEQ, skipShortcut);
                         cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
                                 "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
                     }
+                    cfw.markLabel(skipShortcut);
                     cfw.addPush(node.getString());
                     addScriptRuntimeInvoke(
                         "name",
@@ -2916,19 +2917,10 @@ class BodyCodegen
                         child = child.getNext();
                     }
                     // Generate code for "ScriptRuntime.bind(varObj, "s")"
-                    int length = scopes == null ? 0 : scopes.size();
                     String name = node.getString();
-                    for (int i = 0; i < length; i++) {
-                        ActivationScope scope = scopes.get(i);
-                        if (scope.symbols.contains(name)) {
-                            cfw.addALoad(variableObjectLocal);
-                            for (int j = 0; j < i; j++) {
-                                cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
-                                        "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
-                            }
-                            cfw.add(ByteCode.CHECKCAST, scope.className);
-                            return;
-                        }
+                    // try to statically bind name to activation scopes
+                    if (bindNameInCompanionScopes(name) != null) {
+                        return;
                     }
                     cfw.addALoad(contextLocal);
                     cfw.addALoad(variableObjectLocal);
@@ -3079,6 +3071,88 @@ class BodyCodegen
 
     }
 
+    private ActivationScope bindNameInCompanionScopes(String name) {
+        int length = scopes == null ? 0 : scopes.size();
+        for (int i = 0; i < length; i++) {
+            ActivationScope scope = scopes.get(i);
+            if (scope.symbols.contains(name)) {
+                int invokeBind = cfw.acquireLabel(),
+                    skipBind = cfw.acquireLabel();
+                cfw.addALoad(variableObjectLocal);
+                // try fast path to get to target scope. If we find something else than an
+                // OptCall in the scope chain invoke unwindScopeLookingForName() for the slow path.
+                for (int j = 0; j < i; j++) {
+                    cfw.add(ByteCode.DUP);
+                    cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                    cfw.add(ByteCode.IFEQ, invokeBind); //
+                    cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                            "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                }
+                cfw.add(ByteCode.DUP);
+                cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                cfw.add(ByteCode.IFEQ, invokeBind);
+                cfw.add(ByteCode.GOTO, skipBind);
+                cfw.markLabel(invokeBind);
+                cfw.add(ByteCode.POP);
+                cfw.addALoad(variableObjectLocal);
+                cfw.addPush(i);
+                addOptRuntimeInvoke("bindFunctionScope",
+                        "(Lorg/mozilla/javascript/Scriptable;I)Lorg/mozilla/javascript/Scriptable;");
+                cfw.markLabel(skipBind);
+                cfw.add(ByteCode.CHECKCAST, scope.className);
+                return scope;
+            }
+        }
+        return null;
+    }
+
+
+    private boolean getNameInCompanionScopes(String name) {
+        int length = scopes == null ? 0 : scopes.size();
+
+        for (int i = 0; i < length; i++) {
+            ActivationScope scope = scopes.get(i);
+            if (scope.symbols.contains(name)) {
+                int done = cfw.acquireLabel(),
+                    invokeUnwind = cfw.acquireLabel(),
+                    skipInvokeUnwind = cfw.acquireLabel();
+                cfw.addALoad(variableObjectLocal);
+                // try fast path to get to target scope. If we find something else than an 
+                // OptCall in the scope chain invoke unwindScopeLookingForName() for the slow path.
+                for (int j = 0; j < i; j++) {
+                    cfw.add(ByteCode.DUP);
+                    cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                    cfw.add(ByteCode.IFEQ, invokeUnwind); // 
+                    cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
+                            "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
+                }
+                cfw.add(ByteCode.DUP);
+                cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                cfw.add(ByteCode.IFEQ, invokeUnwind); //
+                cfw.add(ByteCode.GOTO, skipInvokeUnwind);
+                cfw.markLabel(invokeUnwind);
+                cfw.add(ByteCode.POP);
+                cfw.addALoad(variableObjectLocal);
+                cfw.addPush(i);
+                cfw.addPush(name);
+                addOptRuntimeInvoke("unwindScopeLookingForName",
+                        "(Lorg/mozilla/javascript/Scriptable;ILjava/lang/String;)Ljava/lang/Object;");
+                // unwindScopeLookingForName returns either the name's value if it is defined in an
+                // in-between scope such as a NativeWith, or the OptCall scope that holds the name
+                cfw.add(ByteCode.DUP);
+                cfw.add(ByteCode.INSTANCEOF, "org.mozilla.javascript.optimizer.OptCall");
+                cfw.add(ByteCode.IFEQ, done); // unwind produced somethingnot an instance of OptCall, this must be the value
+                cfw.markLabel(skipInvokeUnwind);
+                cfw.add(ByteCode.CHECKCAST, scope.className);
+                cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                cfw.markLabel(done);
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     private void generateYieldPoint(Node node, boolean exprContext) {
         // save stack state
         int top = cfw.getStackTop();
@@ -3220,7 +3294,7 @@ class BodyCodegen
         }
     }
 
-    private void visitFunction(OptFunctionNode ofn, int functionType)
+    private void visitFunction(OptFunctionNode ofn, int functionType, ActivationScope scope)
     {
         int fnIndex = codegen.getIndex(ofn.fnode);
         cfw.add(ByteCode.NEW, codegen.mainClassName);
@@ -3271,6 +3345,16 @@ class BodyCodegen
             // Leave closure object on stack and do not pass it to
             // initFunction which suppose to connect statements to scope
             return;
+        }
+        if (scope != null) {
+            cfw.add(ByteCode.DUP);
+            String name = ofn.fnode.getName();
+            if (name != null && scope.symbols.contains(name)) {
+                cfw.addALoad(variableObjectLocal);
+                cfw.add(ByteCode.CHECKCAST, scope.className);
+                cfw.add(ByteCode.SWAP);
+                cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
+            }
         }
         cfw.addPush(functionType);
         cfw.addALoad(variableObjectLocal);
@@ -3493,6 +3577,26 @@ class BodyCodegen
             if (childType == Token.NAME) {
                 // name() call
                 String name = child.getString();
+
+                if (getNameInCompanionScopes(name)) {
+                    cfw.add(ByteCode.CHECKCAST, "org.mozilla.javascript.Callable");
+                    cfw.addALoad(contextLocal);
+                    cfw.addALoad(variableObjectLocal);
+                    cfw.add(ByteCode.DUP);
+                    cfw.addInvoke(ByteCode.INVOKESTATIC, "org.mozilla.javascript.ScriptableObject",
+                            "getTopLevelScope",
+                            "(Lorg/mozilla/javascript/Scriptable;)Lorg/mozilla/javascript/Scriptable;");
+                    cfw.add(ByteCode.GETSTATIC, "org.mozilla.javascript.ScriptRuntime", "emptyArgs",
+                            "[Ljava/lang/Object;");
+                    cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Callable", "call",
+                            "(Lorg/mozilla/javascript/Context;"
+                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"[Ljava/lang/Object;)"
+                            +"Ljava/lang/Object;");
+                    return;
+                }
+
                 cfw.addPush(name);
                 methodName = "callName0";
                 signature = "(Ljava/lang/String;"
@@ -3530,6 +3634,23 @@ class BodyCodegen
             // is not affected by arguments evaluation and currently
             // there are no checks for it
             String name = child.getString();
+            if (getNameInCompanionScopes(name)) {
+                cfw.add(ByteCode.CHECKCAST, "org.mozilla.javascript.Callable");
+                cfw.addALoad(contextLocal);
+                cfw.addALoad(variableObjectLocal);
+                cfw.add(ByteCode.DUP);
+                cfw.addInvoke(ByteCode.INVOKESTATIC, "org.mozilla.javascript.ScriptableObject",
+                        "getTopLevelScope",
+                       "(Lorg/mozilla/javascript/Scriptable;)Lorg/mozilla/javascript/Scriptable;");
+                generateCallArgArray(node, firstArgChild, false);
+                cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Callable", "call",
+                        "(Lorg/mozilla/javascript/Context;"
+                        +"Lorg/mozilla/javascript/Scriptable;"
+                        +"Lorg/mozilla/javascript/Scriptable;"
+                        +"[Ljava/lang/Object;)"
+                        +"Ljava/lang/Object;");
+                return;
+            }
             generateCallArgArray(node, firstArgChild, false);
             cfw.addPush(name);
             methodName = "callName";
@@ -4147,22 +4268,11 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             }
         }
         String name = node.getString();
-        int length = scopes == null ? 0 : scopes.size();
-        for (int i = 0; i < length; i++) {
-            ActivationScope scope = scopes.get(i);
-            if (scope.symbols.contains(name)) {
-                cfw.addALoad(variableObjectLocal);
-                for (int j = 0; j < i; j++) {
-                    cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
-                            "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
-                }
-                cfw.add(ByteCode.CHECKCAST, scope.className);
-                cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
-                addScriptRuntimeInvoke("typeof",
+        if (getNameInCompanionScopes(name)) {
+            addScriptRuntimeInvoke("typeof",
                                        "(Ljava/lang/Object;"
                                        +")Ljava/lang/String;");
-                return;
-            }
+            return;
         }
         cfw.addALoad(variableObjectLocal);
         cfw.addPush(name);
@@ -4260,26 +4370,17 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
             }
             break;
           case Token.NAME:
-              int length = scopes == null ? 0 : scopes.size();
               String name = child.getString();
-              for (int i = 0; i < length; i++) {
-                  ActivationScope scope = scopes.get(i);
-                  if (scope.symbols.contains(name)) {
-                      cfw.addALoad(variableObjectLocal);
-                      for (int j = 0; j < i; j++) {
-                          cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Scriptable",
-                                  "getParentScope", "()Lorg/mozilla/javascript/Scriptable;");
-                      }
-                      cfw.add(ByteCode.CHECKCAST, scope.className);
-                      cfw.add(ByteCode.DUP);
-                      cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
-                      cfw.addPush(incrDecrMask);
-                      addOptRuntimeInvoke("valueIncrDecr", "(Ljava/lang/Object;I)Ljava/lang/Object;");
-                      cfw.add(ByteCode.DUP_X1);
-                      cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
-                      return;
-                  }
-              }
+              ActivationScope scope = bindNameInCompanionScopes(name);
+              if (scope != null) {
+                  cfw.add(ByteCode.DUP);
+                  cfw.add(ByteCode.GETFIELD, scope.className, name, "Ljava/lang/Object;");
+                  cfw.addPush(incrDecrMask);
+                  addOptRuntimeInvoke("valueIncrDecr", "(Ljava/lang/Object;I)Ljava/lang/Object;");
+                  cfw.add(ByteCode.DUP_X1);
+                  cfw.add(ByteCode.PUTFIELD, scope.className, name, "Ljava/lang/Object;");
+                  return;
+            }
 
             cfw.addALoad(variableObjectLocal);
             cfw.addPush(child.getString());          // push name
@@ -5340,4 +5441,8 @@ Else pass the JS object in the aReg and 0.0 in the dReg.
 class ActivationScope {
     String className;
     Set<String> symbols;
+
+    public String toString() {
+        return "[" + className + "]";
+    }
 }

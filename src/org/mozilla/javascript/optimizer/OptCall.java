@@ -1,5 +1,6 @@
 package org.mozilla.javascript.optimizer;
 
+import org.mozilla.javascript.NativeFunction;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 
@@ -7,9 +8,9 @@ public abstract class OptCall extends ScriptableObject {
 
     public Object arguments;
 
-    public OptCall(Scriptable parentScope, Object[] args) {
+    public OptCall(NativeFunction function, Scriptable parentScope, Object[] args) {
         setParentScope(parentScope);
-        arguments = new OptArguments(args);
+        this.arguments = new OptArguments(function, args);
     }
 
     protected abstract Object getArgument(int index);
@@ -22,12 +23,21 @@ public abstract class OptCall extends ScriptableObject {
 
     class OptArguments extends ScriptableObject {
 
+        NativeFunction function;
         Object[] args;
         int length;
+        Integer lengthObj;
+        Object constructor;
 
-        OptArguments(Object[] args) {
+        OptArguments(NativeFunction function, Object[] args) {
+            this.function = function;
             this.args = args;
             this.length = args.length;
+            this.lengthObj = Integer.valueOf(this.length);
+            this.constructor = ScriptableObject.getTopScopeValue(this, "Object");
+            Scriptable parent = OptCall.this.getParentScope();
+            setParentScope(parent);
+            setPrototype(ScriptableObject.getObjectPrototype(parent));            
         }
 
         public String getClassName() {
@@ -37,9 +47,11 @@ public abstract class OptCall extends ScriptableObject {
         @Override
         public Object get(String name, Scriptable start) {
             if ("length".equals(name)) {
-                return Integer.valueOf(length);
+                return lengthObj;
             } else if ("constructor".equals(name)) {
-                return ScriptableObject.getTopScopeValue(this, "Object");
+                return constructor;
+            } else if ("callee".equals(name)) {
+                return function;
             }
             return super.get(name, start);
         }
