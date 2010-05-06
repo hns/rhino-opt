@@ -1171,7 +1171,7 @@ public abstract class ScriptableObject implements Scriptable, Serializable,
             }
         }
 
-        FunctionObject ctor = new FunctionObject(className, ctorMember, scope);
+        FunctionObject ctor = FunctionObject.createFunctionObject(className, ctorMember, scope);
         if (ctor.isVarArgsMethod()) {
             throw Context.reportRuntimeError1
                 ("msg.varargs.ctor", ctorMember.getName());
@@ -1259,7 +1259,7 @@ public abstract class ScriptableObject implements Scriptable, Serializable,
                         "jsStaticFunction must be used with static method.");
             }
 
-            FunctionObject f = new FunctionObject(name, method, proto);
+            FunctionObject f = FunctionObject.createFunctionObject(name, method, proto);
             if (f.isVarArgsConstructor()) {
                 throw Context.reportRuntimeError1
                     ("msg.varargs.fun", ctorMember.getName());
@@ -1807,7 +1807,7 @@ public abstract class ScriptableObject implements Scriptable, Serializable,
                 throw Context.reportRuntimeError2(
                     "msg.method.not.found", name, clazz.getName());
             }
-            FunctionObject f = new FunctionObject(name, m, this);
+            FunctionObject f = FunctionObject.createFunctionObject(name, m, this);
             defineProperty(name, f, attributes);
         }
     }
