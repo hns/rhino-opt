@@ -61,7 +61,7 @@ public interface RegExpProxy
                                  Object compiled);
 
     public Object action(Context cx, Scriptable scope,
-                         Scriptable thisObj, Object[] args,
+                         Object thisObj, Object[] args,
                          int actionType);
 
     public int find_split(Context cx, Scriptable scope, String target,

@@ -167,7 +167,7 @@ public class NativeGlobal implements Serializable, IdFunctionCall
     }
 
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (f.hasTag(FTAG)) {
             int methodId = f.methodId();

@@ -1,6 +1,5 @@
 package org.mozilla.javascript.commonjs.module;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -130,7 +129,7 @@ public class Require extends ScriptableObject implements Function
         ScriptableObject.putProperty(scope, "require", this);
     }
 
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
             Object[] args)
     {
         if(args == null || args.length < 1) {
@@ -138,7 +137,7 @@ public class Require extends ScriptableObject implements Function
                     "require() needs one argument");
         }
         final String id = (String)Context.jsToJava(args[0], String.class);
-        final String absoluteId = getAbsoluteId(cx, thisObj, id);
+        final String absoluteId = getAbsoluteId(cx, (Scriptable) thisObj, id);
         return getExportedModuleInterface(cx, absoluteId, false);
     }
 

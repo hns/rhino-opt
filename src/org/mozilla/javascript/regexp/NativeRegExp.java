@@ -193,7 +193,7 @@ public class NativeRegExp extends IdScriptableObject implements Function
     	return "object";
     }
 
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         return execSub(cx, scope, args, MATCH);
@@ -2535,7 +2535,7 @@ System.out.println("Testing at " + gData.cp + ", op = " + op);
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(REGEXP_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -2563,7 +2563,7 @@ System.out.println("Testing at " + gData.cp + ", op = " + op);
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    private static NativeRegExp realThis(Scriptable thisObj, IdFunctionObject f)
+    private static NativeRegExp realThis(Object thisObj, IdFunctionObject f)
     {
         if (!(thisObj instanceof NativeRegExp))
             throw incompatibleCallError(f);

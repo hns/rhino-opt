@@ -87,7 +87,7 @@ public class ComplianceTests extends TestCase
             setPrototype(ScriptableObject.getFunctionPrototype(scope));
         }
         
-        public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+        public Object call(Context cx, Scriptable scope, Object thisObj,
                 Object[] args)
         {
             if(args.length > 1 && "fail".equals(args[1])) {

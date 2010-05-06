@@ -147,7 +147,7 @@ public class Foo extends ScriptableObject {
      *
      * @see org.mozilla.javascript.ScriptableObject#getTopLevelScope
      */
-    public static Object jsFunction_varargs(Context cx, Scriptable thisObj,
+    public static Object jsFunction_varargs(Context cx, Object thisObj,
                                             Object[] args, Function funObj)
     {
         StringBuffer buf = new StringBuffer();

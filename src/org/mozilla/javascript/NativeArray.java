@@ -235,7 +235,7 @@ public class NativeArray extends IdScriptableObject
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(ARRAY_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -694,9 +694,11 @@ public class NativeArray extends IdScriptableObject
      * getLengthProperty returns 0 if obj does not have the length property
      * or its value is not convertible to a number.
      */
-    static long getLengthProperty(Context cx, Scriptable obj) {
+    static long getLengthProperty(Context cx, Object obj) {
         // These will both give numeric lengths within Uint32 range.
-        if (obj instanceof NativeString) {
+        if (obj instanceof String) {
+            return ((String)obj).length();
+        } else if (obj instanceof NativeString) {
             return ((NativeString)obj).getLength();
         } else if (obj instanceof NativeArray) {
             return ((NativeArray)obj).getLength();
@@ -705,7 +707,7 @@ public class NativeArray extends IdScriptableObject
             ScriptRuntime.getObjectProp(obj, "length", cx));
     }
 
-    private static Object setLengthProperty(Context cx, Scriptable target,
+    private static Object setLengthProperty(Context cx, Object target,
                                             long length)
     {
         return ScriptRuntime.setObjectProp(
@@ -723,8 +725,11 @@ public class NativeArray extends IdScriptableObject
         else { target.delete(Long.toString(index)); }
     }
 
-    private static Object getElem(Context cx, Scriptable target, long index)
+    private static Object getElem(Context cx, Object target, long index)
     {
+        if (!(target instanceof Scriptable)) {
+            return Undefined.instance;
+        }
         if (index > Integer.MAX_VALUE) {
             String id = Long.toString(index);
             return ScriptRuntime.getObjectProp(target, id, cx);
@@ -734,17 +739,23 @@ public class NativeArray extends IdScriptableObject
     }
 
     // same as getElem, but without converting NOT_FOUND to undefined
-    private static Object getRawElem(Scriptable target, long index) {
+    private static Object getRawElem(Object target, long index) {
+        if (!(target instanceof Scriptable)) {
+            return Scriptable.NOT_FOUND;
+        }
         if (index > Integer.MAX_VALUE) {
-            return ScriptableObject.getProperty(target, Long.toString(index));
+            return ScriptableObject.getProperty((Scriptable) target, Long.toString(index));
         } else {
-            return ScriptableObject.getProperty(target, (int) index);
+            return ScriptableObject.getProperty((Scriptable) target, (int) index);
         }
     }
 
-    private static void setElem(Context cx, Scriptable target, long index,
+    private static void setElem(Context cx, Object target, long index,
                                 Object value)
     {
+        if (!(target instanceof Scriptable)) {
+            return;
+        }
         if (index > Integer.MAX_VALUE) {
             String id = Long.toString(index);
             ScriptRuntime.setObjectProp(target, id, value, cx);
@@ -754,7 +765,7 @@ public class NativeArray extends IdScriptableObject
     }
 
     private static String toStringHelper(Context cx, Scriptable scope,
-                                         Scriptable thisObj,
+                                         Object thisObj,
                                          boolean toSource, boolean toLocale)
     {
         /* It's probably redundant to handle long lengths in this
@@ -819,7 +830,7 @@ public class NativeArray extends IdScriptableObject
                         if (toLocale)
                         {
                             Callable fun;
-                            Scriptable funThis;
+                            Object funThis;
                             fun = ScriptRuntime.getPropFunctionAndThis(
                                       elem, "toLocaleString", cx);
                             funThis = ScriptRuntime.lastStoredScriptable(cx);
@@ -849,7 +860,7 @@ public class NativeArray extends IdScriptableObject
     /**
      * See ECMA 15.4.4.3
      */
-    private static String js_join(Context cx, Scriptable thisObj,
+    private static String js_join(Context cx, Object thisObj,
                                   Object[] args)
     {
         long llength = getLengthProperty(cx, thisObj);
@@ -913,7 +924,7 @@ public class NativeArray extends IdScriptableObject
     /**
      * See ECMA 15.4.4.4
      */
-    private static Scriptable js_reverse(Context cx, Scriptable thisObj,
+    private static Object js_reverse(Context cx, Object thisObj,
                                          Object[] args)
     {
         if (thisObj instanceof NativeArray) {
@@ -943,14 +954,14 @@ public class NativeArray extends IdScriptableObject
     /**
      * See ECMA 15.4.4.5
      */
-    private static Scriptable js_sort(final Context cx, final Scriptable scope,
-            final Scriptable thisObj, final Object[] args)
+    private static Object js_sort(final Context cx, final Scriptable scope,
+            final Object thisObj, final Object[] args)
     {
         final Comparator<Object> comparator;
         if (args.length > 0 && Undefined.instance != args[0]) {
             final Callable jsCompareFunction = ScriptRuntime
                     .getValueFunctionAndThis(args[0], cx);
-            final Scriptable funThis = ScriptRuntime.lastStoredScriptable(cx);
+            final Object funThis = ScriptRuntime.lastStoredScriptable(cx);
             final Object[] cmpBuf = new Object[2]; // Buffer for cmp arguments
             comparator = new Comparator<Object>() {
                 public int compare(final Object x, final Object y) {
@@ -1021,7 +1032,7 @@ public class NativeArray extends IdScriptableObject
      * Non-ECMA methods.
      */
 
-    private static Object js_push(Context cx, Scriptable thisObj,
+    private static Object js_push(Context cx, Object thisObj,
                                   Object[] args)
     {
         if (thisObj instanceof NativeArray) {
@@ -1057,7 +1068,7 @@ public class NativeArray extends IdScriptableObject
             return lengthObj;
     }
 
-    private static Object js_pop(Context cx, Scriptable thisObj,
+    private static Object js_pop(Context cx, Object thisObj,
                                  Object[] args)
     {
         Object result;
@@ -1089,7 +1100,7 @@ public class NativeArray extends IdScriptableObject
         return result;
     }
 
-    private static Object js_shift(Context cx, Scriptable thisObj,
+    private static Object js_shift(Context cx, Object thisObj,
                                    Object[] args)
     {
         if (thisObj instanceof NativeArray) {
@@ -1130,7 +1141,7 @@ public class NativeArray extends IdScriptableObject
         return result;
     }
 
-    private static Object js_unshift(Context cx, Scriptable thisObj,
+    private static Object js_unshift(Context cx, Object thisObj,
                                      Object[] args)
     {
         if (thisObj instanceof NativeArray) {
@@ -1172,7 +1183,7 @@ public class NativeArray extends IdScriptableObject
     }
 
     private static Object js_splice(Context cx, Scriptable scope,
-                                    Scriptable thisObj, Object[] args)
+                                    Object thisObj, Object[] args)
     {
     	NativeArray na = null;
     	boolean denseMode = false;
@@ -1298,7 +1309,7 @@ public class NativeArray extends IdScriptableObject
      * See Ecma 262v3 15.4.4.4
      */
     private static Scriptable js_concat(Context cx, Scriptable scope,
-                                        Scriptable thisObj, Object[] args)
+                                        Object thisObj, Object[] args)
     {
         // create an empty Array to return.
         scope = getTopLevelScope(scope);
@@ -1381,7 +1392,7 @@ public class NativeArray extends IdScriptableObject
         return result;
     }
 
-    private Scriptable js_slice(Context cx, Scriptable thisObj,
+    private Scriptable js_slice(Context cx, Object thisObj,
                                 Object[] args)
     {
         Scriptable scope = getTopLevelScope(this);
@@ -1428,7 +1439,7 @@ public class NativeArray extends IdScriptableObject
     /**
      * Implements the methods "indexOf" and "lastIndexOf".
      */
-    private Object indexOfHelper(Context cx, Scriptable thisObj,
+    private Object indexOfHelper(Context cx, Object thisObj,
                                  Object[] args, boolean isLast)
     {
         Object compareTo = args.length > 0 ? args[0] : Undefined.instance;
@@ -1528,7 +1539,7 @@ public class NativeArray extends IdScriptableObject
      * Implements the methods "every", "filter", "forEach", "map", and "some".
      */
     private Object iterativeMethod(Context cx, int id, Scriptable scope, 
-                                   Scriptable thisObj, Object[] args)
+                                   Object thisObj, Object[] args)
     {
         Object callbackArg = args.length > 0 ? args[0] : Undefined.instance;
         if (callbackArg == null || !(callbackArg instanceof Function)) {
@@ -1595,7 +1606,7 @@ public class NativeArray extends IdScriptableObject
      * Implements the methods "reduce" and "reduceRight".
      */
     private Object reduceMethod(Context cx, int id, Scriptable scope,
-                                   Scriptable thisObj, Object[] args)
+                                   Object thisObj, Object[] args)
     {
         Object callbackArg = args.length > 0 ? args[0] : Undefined.instance;
         if (callbackArg == null || !(callbackArg instanceof Function)) {

@@ -58,7 +58,7 @@ public class DefineFunctionPropertiesTest extends TestCase {
      * In this case we look up a value that we associated with the global
      * object using {@link ScriptableObject#getAssociatedValue(Object)}.
      */
-    public static Object g(Context cx, Scriptable thisObj, Object[] args,
+    public static Object g(Context cx, Object thisObj, Object[] args,
             Function funObj)
     {
         Object arg = args.length > 0 ? args[0] : Undefined.instance;

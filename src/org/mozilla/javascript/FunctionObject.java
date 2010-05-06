@@ -88,7 +88,7 @@ public class FunctionObject extends BaseFunction
      * Otherwise, if the FunctionObject will <i>not</i> be used to define a
      * constructor, the member must be a static Method with parameters
      * <pre>
-     *      (Context cx, Scriptable thisObj, Object[] args,
+     *      (Context cx, Object thisObj, Object[] args,
      *       Function funObj) </pre>
      * and an Object result.<p>
      *
@@ -144,7 +144,7 @@ public class FunctionObject extends BaseFunction
             } else {
                 if (!isStatic ||
                     types[0] != ScriptRuntime.ContextClass ||
-                    types[1] != ScriptRuntime.ScriptableClass ||
+                    types[1] != ScriptRuntime.ObjectClass ||
                     types[2].getComponentType() != ScriptRuntime.ObjectClass ||
                     types[3] != ScriptRuntime.FunctionClass)
                 {
@@ -397,11 +397,10 @@ public class FunctionObject extends BaseFunction
      * <p>
      * Implements Function.call.
      *
-     * @see org.mozilla.javascript.Function#call(
-     *          Context, Scriptable, Scriptable, Object[])
+     * @see RegExpProxy#action(Context, Scriptable, Object, Object[],int)
      */
     @Override
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         Object result;

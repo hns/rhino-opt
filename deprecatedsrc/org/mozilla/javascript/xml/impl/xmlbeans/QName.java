@@ -253,7 +253,7 @@ final class QName extends IdScriptableObject
     public Object execIdCall(IdFunctionObject f,
                              Context cx,
                              Scriptable scope,
-                             Scriptable thisObj,
+                             Object thisObj,
                              Object[] args)
     {
         if (!f.hasTag(QNAME_TAG)) {
@@ -271,7 +271,7 @@ final class QName extends IdScriptableObject
         throw new IllegalArgumentException(String.valueOf(id));
     }
 
-    private QName realThis(Scriptable thisObj, IdFunctionObject f)
+    private QName realThis(Object thisObj, IdFunctionObject f)
     {
         if(!(thisObj instanceof QName))
             throw incompatibleCallError(f);

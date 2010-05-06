@@ -132,7 +132,7 @@ public class NativeObject extends IdScriptableObject
 
     @Override
     public Object execIdCall(IdFunctionObject f, Context cx, Scriptable scope,
-                             Scriptable thisObj, Object[] args)
+                             Object thisObj, Object[] args)
     {
         if (!f.hasTag(OBJECT_TAG)) {
             return super.execIdCall(f, cx, scope, thisObj, args);
@@ -154,9 +154,9 @@ public class NativeObject extends IdScriptableObject
 
           case Id_toLocaleString: // For now just alias toString
           case Id_toString: {
-            if (cx.hasFeature(Context.FEATURE_TO_STRING_AS_SOURCE)) {
+            if (thisObj instanceof Scriptable && cx.hasFeature(Context.FEATURE_TO_STRING_AS_SOURCE)) {
                 String s = ScriptRuntime.defaultObjectToSource(cx, scope,
-                                                               thisObj, args);
+                                                               (Scriptable) thisObj, args);
                 int L = s.length();
                 if (L != 0 && s.charAt(0) == '(' && s.charAt(L - 1) == ')') {
                     // Strip () that surrounds toSource
@@ -164,7 +164,7 @@ public class NativeObject extends IdScriptableObject
                 }
                 return s;
             }
-            return ScriptRuntime.defaultObjectToString(thisObj);
+            return ScriptRuntime.defaultObjectToString((Scriptable) thisObj);
           }
 
           case Id_valueOf:
@@ -172,15 +172,16 @@ public class NativeObject extends IdScriptableObject
 
           case Id_hasOwnProperty: {
             boolean result;
-            if (args.length == 0) {
+            if (!(thisObj instanceof Scriptable) || args.length == 0) {
                 result = false;
             } else {
+                Scriptable scriptable = (Scriptable) thisObj;
                 String s = ScriptRuntime.toStringIdOrIndex(cx, args[0]);
                 if (s == null) {
                     int index = ScriptRuntime.lastIndexResult(cx);
-                    result = thisObj.has(index, thisObj);
+                    result = scriptable.has(index, scriptable);
                 } else {
-                    result = thisObj.has(s, thisObj);
+                    result = scriptable.has(s, scriptable);
                 }
             }
             return ScriptRuntime.wrapBoolean(result);
@@ -188,22 +189,23 @@ public class NativeObject extends IdScriptableObject
 
           case Id_propertyIsEnumerable: {
             boolean result;
-            if (args.length == 0) {
+            if (!(thisObj instanceof Scriptable) || args.length == 0) {
                 result = false;
             } else {
+                Scriptable scriptable = (Scriptable) thisObj;
                 String s = ScriptRuntime.toStringIdOrIndex(cx, args[0]);
                 if (s == null) {
                     int index = ScriptRuntime.lastIndexResult(cx);
-                    result = thisObj.has(index, thisObj);
-                    if (result && thisObj instanceof ScriptableObject) {
-                        ScriptableObject so = (ScriptableObject)thisObj;
+                    result = scriptable.has(index, scriptable);
+                    if (result && scriptable instanceof ScriptableObject) {
+                        ScriptableObject so = (ScriptableObject)scriptable;
                         int attrs = so.getAttributes(index);
                         result = ((attrs & ScriptableObject.DONTENUM) == 0);
                     }
                 } else {
-                    result = thisObj.has(s, thisObj);
-                    if (result && thisObj instanceof ScriptableObject) {
-                        ScriptableObject so = (ScriptableObject)thisObj;
+                    result = scriptable.has(s, scriptable);
+                    if (result && scriptable instanceof ScriptableObject) {
+                        ScriptableObject so = (ScriptableObject)scriptable;
                         int attrs = so.getAttributes(s);
                         result = ((attrs & ScriptableObject.DONTENUM) == 0);
                     }
@@ -228,8 +230,8 @@ public class NativeObject extends IdScriptableObject
           }
 
           case Id_toSource:
-            return ScriptRuntime.defaultObjectToSource(cx, scope, thisObj,
-                                                       args);
+            return ScriptRuntime.defaultObjectToSource(cx, scope,
+                    ScriptRuntime.toObject(scope, thisObj), args);
           case Id___defineGetter__:
           case Id___defineSetter__:
             {

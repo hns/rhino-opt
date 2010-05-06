@@ -123,7 +123,7 @@ public class PolicySecurityController extends SecurityController
 
     @Override
     public Object callWithDomain(final Object securityDomain, final Context cx, 
-            Callable callable, Scriptable scope, Scriptable thisObj, 
+            Callable callable, Scriptable scope, Object thisObj,
             Object[] args)
     {
         // Run in doPrivileged as we might be checked for "getClassLoader" 
@@ -184,7 +184,7 @@ public class PolicySecurityController extends SecurityController
     public abstract static class SecureCaller
     {
         public abstract Object call(Callable callable, Context cx, Scriptable scope, 
-                Scriptable thisObj, Object[] args);
+                Object thisObj, Object[] args);
     }
     
     
@@ -203,7 +203,7 @@ public class PolicySecurityController extends SecurityController
         String callableCallSig = 
             "Lorg/mozilla/javascript/Context;" +
             "Lorg/mozilla/javascript/Scriptable;" +
-            "Lorg/mozilla/javascript/Scriptable;" +
+            "Ljava/lang/Object;" +
             "[Ljava/lang/Object;)Ljava/lang/Object;";
         
         cfw.startMethod("call",

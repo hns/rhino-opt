@@ -168,8 +168,7 @@ public abstract class SecurityController
 
     /**
      * Call {@link
-     * Callable#call(Context cx, Scriptable scope, Scriptable thisObj,
-     *               Object[] args)}
+     * RegExpProxy#action(Context, Scriptable, Object, Object[],int)}
      * of <i>callable</i> under restricted security domain where an action is
      * allowed only if it is allowed according to the Java stack on the
      * moment of the <i>execWithDomain</i> call and <i>securityDomain</i>.
@@ -184,7 +183,7 @@ public abstract class SecurityController
      */
     public Object callWithDomain(Object securityDomain, Context cx,
                                  final Callable callable, Scriptable scope,
-                                 final Scriptable thisObj, final Object[] args)
+                                 final Object thisObj, final Object[] args)
     {
         return execWithDomain(cx, scope, new Script()
         {
@@ -199,7 +198,7 @@ public abstract class SecurityController
     /**
      * @deprecated The application should not override this method and instead
      * override
-     * {@link #callWithDomain(Object securityDomain, Context cx, Callable callable, Scriptable scope, Scriptable thisObj, Object[] args)}.
+     * {@link #callWithDomain(Object securityDomain, Context cx, Callable callable, Scriptable scope, Object thisObj, Object[] args)}.
      */
     public Object execWithDomain(Context cx, Scriptable scope,
                                  Script script, Object securityDomain)

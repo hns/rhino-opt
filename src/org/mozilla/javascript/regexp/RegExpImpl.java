@@ -60,7 +60,7 @@ public class RegExpImpl implements RegExpProxy {
     }
 
     public Object action(Context cx, Scriptable scope,
-                         Scriptable thisObj, Object[] args,
+                         Object thisObj, Object[] args,
                          int actionType)
     {
         GlobData data = new GlobData();
@@ -125,7 +125,7 @@ public class RegExpImpl implements RegExpProxy {
      * Analog of C match_or_replace.
      */
     private static Object matchOrReplace(Context cx, Scriptable scope,
-                                         Scriptable thisObj, Object[] args,
+                                         Object thisObj, Object[] args,
                                          RegExpImpl reImpl,
                                          GlobData data, boolean forceFlat)
     {

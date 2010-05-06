@@ -170,7 +170,7 @@ public class Shell extends ScriptableObject
      * supplied to the JavaScript function.
      *
      */
-    public static void print(Context cx, Scriptable thisObj,
+    public static void print(Context cx, Object thisObj,
                              Object[] args, Function funObj)
     {
         for (int i=0; i < args.length; i++) {
@@ -202,7 +202,7 @@ public class Shell extends ScriptableObject
      *
      * This method is defined as a JavaScript function.
      */
-    public static double version(Context cx, Scriptable thisObj,
+    public static double version(Context cx, Object thisObj,
                                  Object[] args, Function funObj)
     {
         double result = cx.getLanguageVersion();
@@ -219,7 +219,7 @@ public class Shell extends ScriptableObject
      * This method is defined as a JavaScript function.
      *
      */
-    public static void load(Context cx, Scriptable thisObj,
+    public static void load(Context cx, Object thisObj,
                             Object[] args, Function funObj)
     {
         Shell shell = (Shell)getTopLevelScope(thisObj);

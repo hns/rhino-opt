@@ -221,9 +221,9 @@ public class Delegator implements Function {
         return obj.hasInstance(instance);
     }
     /**
-     * @see org.mozilla.javascript.Function#call
+     * @see RegExpProxy#action
      */
-    public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+    public Object call(Context cx, Scriptable scope, Object thisObj,
                        Object[] args)
     {
         return ((Function)obj).call(cx,scope,thisObj,args);

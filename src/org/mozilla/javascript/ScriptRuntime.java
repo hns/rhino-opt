@@ -82,7 +82,7 @@ public class ScriptRuntime {
       if (THROW_TYPE_ERROR == null) {
         BaseFunction thrower = new BaseFunction() {
           @Override
-          public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+          public Object call(Context cx, Scriptable scope, Object thisObj, Object[] args) {
             throw typeError0("msg.op.not.allowed");
           }
           @Override
@@ -115,7 +115,7 @@ public class ScriptRuntime {
          * @param args the array of arguments
          * @return the result of the call
          */
-        public Object call(Context cx, Scriptable scope, Scriptable thisObj,
+        public Object call(Context cx, Scriptable scope, Object thisObj,
                            Object[] args)
         {
             Object[] nestedArgs = new Object[2];
@@ -1032,6 +1032,20 @@ public class ScriptRuntime {
     }
 
     /**
+     * Make sure a value is coercible to an Object using toObject
+     *
+     * see ECMA5 9.10
+     */
+    public static void checkObjectCoercible(Object value) {
+        if (value == null) {
+            throw typeError0("msg.null.to.object");
+        }
+        if (value == Undefined.instance) {
+            throw typeError0("msg.undef.to.object");
+        }
+    }
+
+    /**
      * @deprecated Use {@link #toObject(Context, Scriptable, Object)} instead.
      */
     public static Scriptable toObject(Context cx, Scriptable scope, Object val,
@@ -1488,7 +1502,7 @@ public class ScriptRuntime {
         }
         return getObjectProp(sobj, property, cx);
     }
-    
+
     public static Object getObjectProp(Scriptable obj, String property,
                                        Context cx)
     {
@@ -2292,7 +2306,7 @@ public class ScriptRuntime {
                                                   Context cx)
     {
         Scriptable thisObj = toObjectOrNull(cx, obj);
-        return getPropFunctionAndThisHelper(obj, property, cx, thisObj);
+        return getPropFunctionAndThisHelper(obj, property, cx, thisObj, null);
     }
 
     /**
@@ -2306,21 +2320,38 @@ public class ScriptRuntime {
                                                   String property,
                                                   Context cx, final Scriptable scope)
     {
-        Scriptable thisObj = toObjectOrNull(cx, obj, scope);
-        return getPropFunctionAndThisHelper(obj, property, cx, thisObj);
+        checkObjectCoercible(obj);
+        Object thisObj = obj;
+        return getPropFunctionAndThisHelper(obj, property, cx, thisObj, scope);
     }
     
     private static Callable getPropFunctionAndThisHelper(Object obj,
-          String property, Context cx, Scriptable thisObj)
+          String property, Context cx, Object thisObj, Scriptable scope)
     {
         if (thisObj == null) {
             throw undefCallError(obj, property);
         }
 
         Object value;
+        if (scope == null) {
+            scope = cx.topCallScope;
+        }
+        Scriptable proxy;
+        if (thisObj instanceof Scriptable) {
+            proxy = (Scriptable) thisObj;
+        } else if (thisObj instanceof String) {
+            proxy = ScriptableObject.getClassPrototype(scope, "String");
+        } else if (thisObj instanceof Number) {
+            proxy = ScriptableObject.getClassPrototype(scope, "Number");
+        } else if (thisObj instanceof Boolean) {
+            proxy = ScriptableObject.getClassPrototype(scope, "Boolean");
+        } else {
+            // FIXME
+            throw new RuntimeException("Unsupported base object: " + thisObj);
+        }
         for (;;) {
             // Ignore XML lookup as required by ECMA 357, 11.2.2.1
-            value = ScriptableObject.getProperty(thisObj, property);
+            value = ScriptableObject.getProperty(proxy, property);
             if (value != Scriptable.NOT_FOUND) {
                 break;
             }
@@ -2336,7 +2367,7 @@ public class ScriptRuntime {
         }
 
         if (!(value instanceof Callable)) {
-            Object noSuchMethod = ScriptableObject.getProperty(thisObj, "__noSuchMethod__");
+            Object noSuchMethod = ScriptableObject.getProperty(proxy, "__noSuchMethod__");
             if (noSuchMethod instanceof Callable)
                 value = new NoSuchMethodShim((Callable)noSuchMethod, property);
             else
@@ -2391,7 +2422,7 @@ public class ScriptRuntime {
      * can be GC-reachable after this method returns. If this is necessary,
      * store args.clone(), not args array itself.
      */
-    public static Ref callRef(Callable function, Scriptable thisObj,
+    public static Ref callRef(Callable function, Object thisObj,
                               Object[] args, Context cx)
     {
         if (function instanceof RefCallable) {
@@ -2426,7 +2457,7 @@ public class ScriptRuntime {
     public static Object callSpecial(Context cx, Callable fun,
                                      Scriptable thisObj,
                                      Object[] args, Scriptable scope,
-                                     Scriptable callerThis, int callType,
+                                     Object callerThis, int callType,
                                      String filename, int lineNumber)
     {
         if (callType == Node.SPECIALCALL_EVAL) {
@@ -2472,7 +2503,7 @@ public class ScriptRuntime {
      */
     public static Object applyOrCall(boolean isApply,
                                      Context cx, Scriptable scope,
-                                     Scriptable thisObj, Object[] args)
+                                     Object thisObj, Object[] args)
     {
         int L = args.length;
         Callable function = getCallable(thisObj);
@@ -2515,17 +2546,20 @@ public class ScriptRuntime {
         }
     }
 
-    static Callable getCallable(Scriptable thisObj)
+    static Callable getCallable(Object thisObj)
     {
-        Callable function;
+        Callable function = null;
         if (thisObj instanceof Callable) {
             function = (Callable)thisObj;
-        } else {
-            Object value = thisObj.getDefaultValue(ScriptRuntime.FunctionClass);
+        } else if (thisObj instanceof ScriptableObject) {
+            Object value = ((ScriptableObject) thisObj).getDefaultValue(ScriptRuntime.FunctionClass);
             if (!(value instanceof Callable)) {
                 throw ScriptRuntime.notFunctionError(value, thisObj);
             }
             function = (Callable)value;
+        }
+        if (function == null) {
+            throw ScriptRuntime.notFunctionError(thisObj, thisObj);
         }
         return function;
     }
@@ -3147,7 +3181,7 @@ public class ScriptRuntime {
 
     public static Object doTopCall(Callable callable,
                                    Context cx, Scriptable scope,
-                                   Scriptable thisObj, Object[] args)
+                                   Object thisObj, Object[] args)
     {
         if (scope == null)
             throw new IllegalArgumentException();
@@ -3208,7 +3242,7 @@ public class ScriptRuntime {
         }
     }
 
-    public static void initScript(NativeFunction funObj, Scriptable thisObj,
+    public static void initScript(NativeFunction funObj, Object thisObj,
                                   Context cx, Scriptable scope,
                                   boolean evalScript)
     {
@@ -3989,18 +4023,18 @@ public class ScriptRuntime {
         return value;
     }
 
-    private static void storeScriptable(Context cx, Scriptable value)
+    private static void storeScriptable(Context cx, Object value)
     {
         // The previously stored scratchScriptable should be consumed
-        if (cx.scratchScriptable != null)
+        if (cx.scratchObject != null)
             throw new IllegalStateException();
-        cx.scratchScriptable = value;
+        cx.scratchObject = value;
     }
 
-    public static Scriptable lastStoredScriptable(Context cx)
+    public static Object lastStoredScriptable(Context cx)
     {
-        Scriptable result = cx.scratchScriptable;
-        cx.scratchScriptable = null;
+        Object result = cx.scratchObject;
+        cx.scratchObject = null;
         return result;
     }
 

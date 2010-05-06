@@ -485,8 +485,7 @@ public class Context
 
     /**
      * Call {@link
-     * Callable#call(Context cx, Scriptable scope, Scriptable thisObj,
-     *               Object[] args)}
+     * RegExpProxy#action(Context, Scriptable, Object, Object[],int)}
      * using the Context instance associated with the current thread.
      * If no Context is associated with the thread, then
      * {@link ContextFactory#makeContext()} will be called to construct
@@ -499,7 +498,7 @@ public class Context
      * @see ContextFactory#call(ContextAction)
      */
     public static Object call(ContextFactory factory, final Callable callable,
-                              final Scriptable scope, final Scriptable thisObj,
+                              final Scriptable scope, final Object thisObj,
                               final Object[] args)
     {
         if(factory == null) {
@@ -2666,7 +2665,7 @@ public class Context
     long scratchUint32;
 
     // It can be used to return the second Scriptable result from function
-    Scriptable scratchScriptable;
+    Object scratchObject;
 
     // Generate an observer count on compiled code
     public boolean generateObserverCount = false;
