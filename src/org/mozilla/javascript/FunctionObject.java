@@ -527,7 +527,7 @@ public class FunctionObject extends BaseFunction
     final private static String INIT_SIGNATURE =
             "(Ljava/lang/String;Ljava/lang/reflect/Member;Lorg/mozilla/javascript/Scriptable;)V";
     final private static String CALL_SIGNATURE =
-            "(Lorg/mozilla/javascript/Context;Lorg/mozilla/javascript/Scriptable;Lorg/mozilla/javascript/Scriptable;"
+            "(Lorg/mozilla/javascript/Context;Lorg/mozilla/javascript/Scriptable;Ljava/lang/Object;"
                     + "[Ljava/lang/Object;)Ljava/lang/Object;";
     final private static String CONVERT_SIGNATURE =
             "(Lorg/mozilla/javascript/Context;Lorg/mozilla/javascript/Scriptable;Ljava/lang/Object;I)Ljava/lang/Object;";

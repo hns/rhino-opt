@@ -3593,7 +3593,7 @@ class BodyCodegen
                     cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Callable", "call",
                             "(Lorg/mozilla/javascript/Context;"
                             +"Lorg/mozilla/javascript/Scriptable;"
-                            +"Lorg/mozilla/javascript/Scriptable;"
+                            +"Ljava/lang/Object;"
                             +"[Ljava/lang/Object;)"
                             +"Ljava/lang/Object;");
                     return;
@@ -3648,7 +3648,7 @@ class BodyCodegen
                 cfw.addInvoke(ByteCode.INVOKEINTERFACE, "org.mozilla.javascript.Callable", "call",
                         "(Lorg/mozilla/javascript/Context;"
                         +"Lorg/mozilla/javascript/Scriptable;"
-                        +"Lorg/mozilla/javascript/Scriptable;"
+                        +"Ljava/lang/Object;"
                         +"[Ljava/lang/Object;)"
                         +"Ljava/lang/Object;");
                 return;
