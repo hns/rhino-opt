@@ -2522,14 +2522,14 @@ class BodyCodegen
                       default:
                         if (child.getType() == Token.STRING) {
                             addScriptRuntimeInvoke("add",
-                                "(Ljava/lang/String;"
+                                "(Ljava/lang/CharSequence;"
                                 +"Ljava/lang/Object;"
-                                +")Ljava/lang/String;");
+                                +")Ljava/lang/StringBuilder;");
                         } else if (child.getNext().getType() == Token.STRING) {
                             addScriptRuntimeInvoke("add",
                                 "(Ljava/lang/Object;"
-                                +"Ljava/lang/String;"
-                                +")Ljava/lang/String;");
+                                +"Ljava/lang/CharSequence;"
+                                +")Ljava/lang/StringBuilder;");
                         } else {
                             cfw.addALoad(contextLocal);
                             addScriptRuntimeInvoke("add",

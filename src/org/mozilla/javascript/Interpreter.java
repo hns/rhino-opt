@@ -3047,14 +3047,14 @@ switch (op) {
         } else {
             if (lhs instanceof Scriptable || rhs instanceof Scriptable) {
                 stack[stackTop] = ScriptRuntime.add(lhs, rhs, cx);
-            } else if (lhs instanceof String) {
-                String lstr = (String)lhs;
-                String rstr = ScriptRuntime.toString(rhs);
-                stack[stackTop] = lstr.concat(rstr);
-            } else if (rhs instanceof String) {
-                String lstr = ScriptRuntime.toString(lhs);
-                String rstr = (String)rhs;
-                stack[stackTop] = lstr.concat(rstr);
+            } else if (lhs instanceof CharSequence) {
+                StringBuilder lstr = ScriptRuntime.toStringBuilder(lhs);
+                CharSequence rstr = ScriptRuntime.toCharSequence(rhs);
+                stack[stackTop] = lstr.append(rstr);
+            } else if (rhs instanceof CharSequence) {
+                StringBuilder lstr = ScriptRuntime.toStringBuilder(lhs);
+                CharSequence rstr = (CharSequence)rhs;
+                stack[stackTop] = lstr.append(rstr);
             } else {
                 double lDbl = (lhs instanceof Number)
                     ? ((Number)lhs).doubleValue() : ScriptRuntime.toNumber(lhs);

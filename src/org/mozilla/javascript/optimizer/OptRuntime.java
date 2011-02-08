@@ -123,9 +123,9 @@ public final class OptRuntime extends ScriptRuntime
     {
         if (val1 instanceof Scriptable)
             val1 = ((Scriptable) val1).getDefaultValue(null);
-        if (!(val1 instanceof String))
+        if (!(val1 instanceof CharSequence))
             return wrapDouble(toNumber(val1) + val2);
-        return ((String)val1).concat(toString(val2));
+        return toStringBuilder(val1).append(toCharSequence(val2));
     }
 
     public static Object add(double val1, Object val2)
