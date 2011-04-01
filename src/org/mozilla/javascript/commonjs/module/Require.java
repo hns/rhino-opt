@@ -263,7 +263,14 @@ public class Require extends BaseFunction
             // current module's execution."
             threadLoadingModules.put(id, exports);
             try {
-                executeModuleScript(cx, id, exports, moduleScript, isMain);
+                // Support non-standard Node.js feature to allow modules to
+                // replace the exports object by setting module.exports.
+                Scriptable newExports = executeModuleScript(cx, id, exports,
+                        moduleScript, isMain);
+                if (exports != newExports) {
+                    threadLoadingModules.put(id, newExports);
+                    exports = newExports;
+                }
             }
             catch(RuntimeException e) {
                 // Throw loaded module away if there was an exception
@@ -286,7 +293,7 @@ public class Require extends BaseFunction
         return exports;
     }
 
-    private void executeModuleScript(Context cx, String id,
+    private Scriptable executeModuleScript(Context cx, String id,
             Scriptable exports, ModuleScript moduleScript, boolean isMain)
     {
         final ScriptableObject moduleObject = (ScriptableObject)cx.newObject(
@@ -302,8 +309,9 @@ public class Require extends BaseFunction
         // This means we're currently using the "MGN" approach (ModuleScript 
         // with Global Natives) as specified here: 
         // <http://wiki.commonjs.org/wiki/Modules/ProposalForNativeExtension>
-        ScriptableObject.putProperty(executionScope, "exports", exports);
-        ScriptableObject.putProperty(executionScope, "module", moduleObject);
+        executionScope.put("exports", executionScope, exports);
+        executionScope.put("module", executionScope, moduleObject);
+        moduleObject.put("exports", moduleObject, exports);
         install(executionScope);
         if(isMain) {
             defineReadOnlyProperty(this, "main", moduleObject);
@@ -311,6 +319,8 @@ public class Require extends BaseFunction
         executeOptionalScript(preExec, cx, executionScope);
         moduleScript.getScript().exec(cx, executionScope);
         executeOptionalScript(postExec, cx, executionScope);
+        return ScriptRuntime.toObject(nativeScope,
+                ScriptableObject.getProperty(moduleObject, "exports"));
     }
     
     private static void executeOptionalScript(Script script, Context cx, 
