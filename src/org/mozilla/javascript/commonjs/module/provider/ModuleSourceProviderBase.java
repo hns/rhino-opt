@@ -30,10 +30,10 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
     public ModuleSource loadSource(String moduleId, Scriptable paths,
             Object validator) throws IOException
     {
-        if(!isValidModuleIdentifier(moduleId)) {
+        /* if(!isValidModuleIdentifier(moduleId)) {
             throw ScriptRuntime.constructError("Error",
                     "Module ID '" + moduleId + "' is not valid");
-        }
+        } */
         if(!entityNeedsRevalidation(validator)) {
             return NOT_MODIFIED;
         }
@@ -66,7 +66,8 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
         // Yeah, I'll ignore entries beyond Integer.MAX_VALUE; so sue me.
         int ilength = llength > Integer.MAX_VALUE ? Integer.MAX_VALUE : 
             (int)llength;
-        final String relativeModuleUri = moduleId + ".js";
+        final String relativeModuleUri = moduleId.endsWith(".js") ?
+                moduleId : moduleId + ".js";
         for(int i = 0; i < ilength; ++i) {
             final String path = ensureTrailingSlash(
                     ScriptableObject.getTypedProperty(paths, i, String.class));

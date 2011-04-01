@@ -100,7 +100,8 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
         if(paths == null) {
             return null;
         }
-        final String relativeModuleUri = moduleId + ".js";
+        final String relativeModuleUri = moduleId.endsWith(".js") ?
+                moduleId : moduleId + ".js";
         for (URI path : paths) {
             final ModuleSource moduleSource = loadFromUri(
                     path.resolve(relativeModuleUri), path, validator);

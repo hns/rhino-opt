@@ -164,16 +164,16 @@ public class Require extends BaseFunction
         String id = (String)Context.jsToJava(args[0], String.class);
         URI uri = null, base;
         if (id.startsWith("./") || id.startsWith("../")) {
-            if (!(scope instanceof ModuleScope)) {
+            if (!(thisObj instanceof ModuleScope)) {
                 throw ScriptRuntime.throwError(cx, scope,
                         "Can't resolve relative module ID \"" + id +
                                 "\" when require() is used outside of a module");
             }
 
-            ModuleScope moduleScope = (ModuleScope) scope;
+            ModuleScope moduleScope = (ModuleScope) thisObj;
             base = moduleScope.getBase();
             URI current = moduleScope.getUri();
-            String relativePath = id + ".js";
+            String relativePath = id.endsWith(".js") ? id : id + ".js";
 
             if (base == null) {
                 // calling module is absolute, resolve to absolute URI
