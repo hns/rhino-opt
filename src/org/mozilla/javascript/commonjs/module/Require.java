@@ -1,17 +1,18 @@
 package org.mozilla.javascript.commonjs.module;
 
-import java.io.IOException;
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.mozilla.javascript.BaseFunction;
 import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Function;
 import org.mozilla.javascript.Script;
 import org.mozilla.javascript.ScriptRuntime;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
-import org.mozilla.javascript.UniqueTag;
 
 /**
  * Implements the require() function as defined by 
@@ -31,9 +32,9 @@ import org.mozilla.javascript.UniqueTag;
  * program, you need to invoke either {@link #install(Scriptable)} or 
  * {@link #requireMain(Context, String)}.
  * @author Attila Szegedi
- * @version $Id$
+ * @version $Id: Require.java,v 1.2 2010/02/19 09:47:19 szegedia%freemail.hu Exp $
  */
-public class Require extends ScriptableObject implements Function
+public class Require extends BaseFunction
 {
     private static final long serialVersionUID = 1L;
 
@@ -44,6 +45,7 @@ public class Require extends ScriptableObject implements Function
     private final Script preExec;
     private final Script postExec;
     private String mainModuleId = null;
+    private Scriptable mainExports;
 
     // Modules that completed loading; visible to all threads
     private final Map<String, Scriptable> exportedModuleInterfaces = 
@@ -109,14 +111,35 @@ public class Require extends ScriptableObject implements Function
      */
     public Scriptable requireMain(Context cx, String mainModuleId) {
         if(this.mainModuleId != null) {
-            if(this.mainModuleId.equals(mainModuleId)) {
-                return getExportedModuleInterface(cx, mainModuleId, false);
-            }
-            throw new IllegalStateException("main module already set to " + 
+            if (!this.mainModuleId.equals(mainModuleId)) {
+                throw new IllegalStateException("Main module already set to " +
                     this.mainModuleId);
+            }
+            return mainExports;
         }
-        final Scriptable mainExports = getExportedModuleInterface(cx, 
-                mainModuleId, true);
+
+        URI mainUri = null;
+        if (!sandboxed) {
+            // try to resolve to an absolute URI or file path first
+            try {
+                mainUri = new URI(mainModuleId);
+            } catch (URISyntaxException usx) {
+                // fall through
+            }
+            if (mainUri == null || !mainUri.isAbsolute()) {
+                File file = new File(mainModuleId);
+                mainUri = file.isFile() ? file.toURI() : null;
+            }
+        }
+
+        if (mainUri != null) {
+            mainExports = getExportedModuleInterface(cx, mainUri.toString(),
+                    mainUri, true);
+        } else {
+            mainExports = getExportedModuleInterface(cx, mainModuleId,
+                    null, true);
+        }
+
         this.mainModuleId = mainModuleId;
         return mainExports;
     }
@@ -137,23 +160,42 @@ public class Require extends ScriptableObject implements Function
             throw ScriptRuntime.throwError(cx, scope, 
                     "require() needs one argument");
         }
-        final String id = (String)Context.jsToJava(args[0], String.class);
-        final String absoluteId = getAbsoluteId(cx, thisObj, id);
-        return getExportedModuleInterface(cx, absoluteId, false);
-    }
 
-    private String getAbsoluteId(Context cx, Scriptable scope, String id)
-    {
-        if(id.startsWith("./") || id.startsWith("../")) {
-            final String moduleId = getModuleId(scope);
-            if(moduleId == null) {
-                throw ScriptRuntime.throwError(cx, scope, 
-                        "Can't resolve relative module ID " + id + 
-                        " when require() is used outside of a module");
+        String id = (String)Context.jsToJava(args[0], String.class);
+        URI uri = null, base;
+        if (id.startsWith("./") || id.startsWith("../")) {
+            if (!(scope instanceof ModuleScope)) {
+                throw ScriptRuntime.throwError(cx, scope,
+                        "Can't resolve relative module ID \"" + id +
+                                "\" when require() is used outside of a module");
             }
-            return resolveRelativeId(getParentDirectory(moduleId), id);
+
+            ModuleScope moduleScope = (ModuleScope) scope;
+            base = moduleScope.getBase();
+            URI current = moduleScope.getUri();
+            String relativePath = id + ".js";
+
+            if (base == null) {
+                // calling module is absolute, resolve to absolute URI
+                uri = current.resolve(relativePath);
+                id = uri.toString();
+            } else {
+                // try to convert to a relative URI rooted on base
+                id = base.relativize(current).resolve(id).toString();
+                if (id.charAt(0) == '.') {
+                    // resulting URI is not contained in base,
+                    // throw error or make absolute depending on sandbox flag.
+                    if (sandboxed) {
+                        throw ScriptRuntime.throwError(cx, scope,
+                            "Module \"" + id + "\" is not contained in sandbox.");
+                    } else {
+                        uri = current.resolve(relativePath);
+                        id = uri.toString();
+                    }
+                }
+            }
         }
-        return id;
+        return getExportedModuleInterface(cx, id, uri, false);
     }
 
     public Scriptable construct(Context cx, Scriptable scope, Object[] args) {
@@ -161,39 +203,8 @@ public class Require extends ScriptableObject implements Function
                 "require() can not be invoked as a constructor");
     }
 
-    private static String resolveRelativeId(String directory, String id) {
-        if(id.startsWith("./")) {
-            return resolveRelativeId(directory, id.substring(2));
-        }
-        else if(id.startsWith("../")) {
-            return resolveRelativeId(getParentDirectory(directory), 
-                    id.substring(3));
-        }
-        else {
-            return "".equals(directory) ? id : (directory + "/" + id);
-        }
-    }
-    
-    private static String getModuleId(Scriptable scope) {
-        final Object module = ScriptableObject.getProperty(scope, "module");
-        if(!(module instanceof Scriptable)) {
-            return null;
-        }
-        final Object id = ScriptableObject.getProperty((Scriptable)module, 
-                "id");
-        if(id == UniqueTag.NOT_FOUND || id == null) {
-            return null;
-        }
-        return String.valueOf(Context.jsToJava(id, String.class));
-    }
-    
-    private static String getParentDirectory(String path) {
-        final int i = path.lastIndexOf('/');
-        return i == -1 ? "" : path.substring(0, i);
-    }
-    
-    private Scriptable getExportedModuleInterface(Context cx, String id, 
-            boolean isMain) 
+    private Scriptable getExportedModuleInterface(Context cx, String id,
+            URI uri, boolean isMain)
     {
         // Check if the requested module is already completely loaded
         Scriptable exports = exportedModuleInterfaces.get(id);
@@ -230,7 +241,11 @@ public class Require extends ScriptableObject implements Function
                 return exports;
             }
             // Nope, still not loaded; we're loading it then.
-            final ModuleScript moduleScript = getModule(cx, id);
+            final ModuleScript moduleScript = getModule(cx, id, uri);
+            if (sandboxed && !moduleScript.isSandboxed()) {
+                throw ScriptRuntime.throwError(cx, nativeScope, "Module \""
+                        + id + "\" is not contained in sandbox.");
+            }
             exports = cx.newObject(nativeScope);
             // Are we the outermost locked invocation on this thread?
             final boolean outermostLocked = threadLoadingModules == null;
@@ -271,19 +286,18 @@ public class Require extends ScriptableObject implements Function
         return exports;
     }
 
-    private void executeModuleScript(Context cx, String id, 
+    private void executeModuleScript(Context cx, String id,
             Scriptable exports, ModuleScript moduleScript, boolean isMain)
     {
         final ScriptableObject moduleObject = (ScriptableObject)cx.newObject(
                 nativeScope);
+        URI uri = moduleScript.getUri();
+        URI base = moduleScript.getBase();
         defineReadOnlyProperty(moduleObject, "id", id);
         if(!sandboxed) {
-            final String uri = moduleScript.getUri();
-            if(uri != null) {
-                defineReadOnlyProperty(moduleObject, "uri", uri);
-            }
+            defineReadOnlyProperty(moduleObject, "uri", uri.toString());
         }
-        final Scriptable executionScope = cx.newObject(nativeScope);
+        final Scriptable executionScope = new ModuleScope(nativeScope, uri, base);
         // Set this so it can access the global JS environment objects. 
         // This means we're currently using the "MGN" approach (ModuleScript 
         // with Global Natives) as specified here: 
@@ -291,7 +305,6 @@ public class Require extends ScriptableObject implements Function
         ScriptableObject.putProperty(executionScope, "exports", exports);
         ScriptableObject.putProperty(executionScope, "module", moduleObject);
         install(executionScope);
-        executionScope.setPrototype(nativeScope);
         if(isMain) {
             defineReadOnlyProperty(this, "main", moduleObject);
         }
@@ -314,14 +327,14 @@ public class Require extends ScriptableObject implements Function
         obj.setAttributes(name, ScriptableObject.READONLY | 
                 ScriptableObject.PERMANENT);
     }
-    
-    private ModuleScript getModule(Context cx, String id) {
+
+    private ModuleScript getModule(Context cx, String id, URI uri) {
         try {
-            final ModuleScript moduleScript = 
-                moduleScriptProvider.getModuleScript(cx, id, paths);
-            if(moduleScript == null) {
-                throw ScriptRuntime.throwError(cx, nativeScope, "Module " + id 
-                        + " not found."); 
+            final ModuleScript moduleScript =
+                    moduleScriptProvider.getModuleScript(cx, id, uri, paths);
+            if (moduleScript == null) {
+                throw ScriptRuntime.throwError(cx, nativeScope, "Module \""
+                        + id + "\" not found.");
             }
             return moduleScript;
         }
@@ -332,9 +345,19 @@ public class Require extends ScriptableObject implements Function
             throw Context.throwAsScriptRuntimeEx(e);
         }
     }
-    
+
     @Override
-    public String getClassName() {
-        return "Function";
+    public String getFunctionName() {
+        return "require";
+    }
+
+    @Override
+    public int getArity() {
+        return 1;
+    }
+
+    @Override
+    public int getLength() {
+        return 1;
     }
 }

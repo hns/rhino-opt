@@ -1,5 +1,6 @@
 package org.mozilla.javascript.commonjs.module.provider;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.MalformedURLException;
@@ -26,33 +27,38 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
 {
     private static final long serialVersionUID = 1L;
 
-    public ModuleSource getModuleSource(String moduleId, Scriptable paths,
-            Object validator) throws IOException 
+    public ModuleSource loadSource(String moduleId, Scriptable paths,
+            Object validator) throws IOException
     {
         if(!isValidModuleIdentifier(moduleId)) {
-            throw new IllegalArgumentException("ModuleScript ID '" + moduleId + 
-                    "' is not valid");
+            throw ScriptRuntime.constructError("Error",
+                    "Module ID '" + moduleId + "' is not valid");
         }
         if(!entityNeedsRevalidation(validator)) {
             return NOT_MODIFIED;
         }
         
-        ModuleSource moduleSource = loadModuleSourceFromPrivilegedLocations(
+        ModuleSource moduleSource = loadFromPrivilegedLocations(
                 moduleId, validator);
         if(moduleSource != null) {
             return moduleSource;
         }
         if(paths != null) {
-            moduleSource = loadModuleSourceFromPathArray(moduleId, paths, 
+            moduleSource = loadFromPathArray(moduleId, paths,
                     validator);
             if(moduleSource != null) {
                 return moduleSource;
             }
         }
-        return loadModuleSourceFromFallbackLocations(moduleId, validator);
+        return loadFromFallbackLocations(moduleId, validator);
     }
 
-    private ModuleSource loadModuleSourceFromPathArray(String moduleId, 
+    public ModuleSource loadSource(URI uri, Object validator)
+            throws IOException, URISyntaxException {
+        return loadFromUri(uri, null, validator);
+    }
+
+    private ModuleSource loadFromPathArray(String moduleId,
             Scriptable paths, Object validator) throws IOException
     {
         final long llength = ScriptRuntime.toUint32(
@@ -65,8 +71,12 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
             final String path = ensureTrailingSlash(
                     ScriptableObject.getTypedProperty(paths, i, String.class));
             try {
-                final ModuleSource moduleSource = loadModuleSourceFromUri(
-                        new URI(path).resolve(relativeModuleUri), validator);
+                URI uri =  new URI(path);
+                if (!uri.isAbsolute()) {
+                    uri = new File(path).toURI().resolve("");
+                }
+                final ModuleSource moduleSource = loadFromUri(
+                        uri.resolve(relativeModuleUri), uri, validator);
                 if(moduleSource != null) {
                     return moduleSource;
                 }
@@ -113,7 +123,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
      */
-    protected ModuleSource loadModuleSourceFromUri(URI uri, Object validator) 
+    protected ModuleSource loadFromUri(URI uri, URI base, Object validator)
     throws IOException
     {
         return null;
@@ -132,7 +142,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
      */
-    protected ModuleSource loadModuleSourceFromPrivilegedLocations(
+    protected ModuleSource loadFromPrivilegedLocations(
             String moduleId, Object validator) throws IOException
     {
         return null;
@@ -151,7 +161,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
      */
-    protected ModuleSource loadModuleSourceFromFallbackLocations(
+    protected ModuleSource loadFromFallbackLocations(
             String moduleId, Object validator) throws IOException
     {
         return null;
@@ -164,8 +174,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * @return true if it is a valid module ID, false otherwise.
      */
     public static boolean isValidModuleIdentifier(String moduleId) {
-        if(moduleId == null || moduleId.length() == 0 || 
-                moduleId.charAt(0) == '/') {
+        if(moduleId == null || moduleId.length() == 0) {
             return false;
         }
         final StringTokenizer tok = new StringTokenizer(moduleId, "/");
@@ -184,7 +193,8 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
             return false;
         }
         for(int i = 1; i < l; ++i) {
-            if(!Character.isJavaIdentifierPart(term.charAt(i))) {
+            char c = term.charAt(i);
+            if(!Character.isJavaIdentifierPart(c) && c != '-') {
                 return false;
             }
         }
