@@ -44,6 +44,7 @@
 package org.mozilla.javascript.tools.shell;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -59,6 +60,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ContextAction;
@@ -72,6 +74,7 @@ import org.mozilla.javascript.Script;
 import org.mozilla.javascript.Scriptable;
 import org.mozilla.javascript.ScriptableObject;
 import org.mozilla.javascript.SecurityController;
+import org.mozilla.javascript.commonjs.module.Require;
 import org.mozilla.javascript.tools.SourceReader;
 import org.mozilla.javascript.tools.ToolErrorReporter;
 
@@ -95,6 +98,10 @@ public class Main
     static private final int EXITCODE_FILE_NOT_FOUND = 4;
     static boolean processStdin = true;
     static List<String> fileList = new ArrayList<String>();
+    static String[] modulePath;
+    static String mainModule;
+    static boolean sandboxed = false;
+    static Require require;
     private static SecurityProxy securityImpl;
     private final static ScriptCache scriptCache = new ScriptCache(32);
 
@@ -122,6 +129,9 @@ public class Main
 
         public Object run(Context cx)
         {
+            if (modulePath != null || mainModule != null) {
+                require = global.installRequire(cx, modulePath, sandboxed);
+            }
             if (type == PROCESS_FILES) {
                 processFiles(cx, args);
             } else if (type == EVAL_INLINE_SCRIPT) {
@@ -177,6 +187,8 @@ public class Main
         errorReporter = new ToolErrorReporter(false, global.getErr());
         shellContextFactory.setErrorReporter(errorReporter);
         String[] args = processOptions(origArgs);
+        if (mainModule != null)
+            fileList.add(mainModule);
         if (processStdin)
             fileList.add(null);
 
@@ -301,6 +313,27 @@ public class Main
                 IProxy iproxy = new IProxy(IProxy.EVAL_INLINE_SCRIPT);
                 iproxy.scriptText = args[i];
                 shellContextFactory.call(iproxy);
+                continue;
+            }
+            if (arg.equals("-modules")) {
+                if (++i == args.length) {
+                    usageError = arg;
+                    break goodUsage;
+                }
+                modulePath = args[i].split(Pattern.quote(File.pathSeparator));
+                continue;
+            }
+            if (arg.equals("-main")) {
+                if (++i == args.length) {
+                    usageError = arg;
+                    break goodUsage;
+                }
+                mainModule = args[i];
+                processStdin = false;
+                continue;
+            }
+            if (arg.equals("-sandbox")) {
+                sandboxed = true;
                 continue;
             }
             if (arg.equals("-w")) {
@@ -446,6 +479,21 @@ public class Main
                 }
             }
             ps.println();
+        } else if (filename.equals(mainModule)) {
+            try {
+                require.requireMain(cx, filename);
+            } catch (RhinoException rex) {
+                ToolErrorReporter.reportException(
+                        cx.getErrorReporter(), rex);
+                exitCode = EXITCODE_RUNTIME_ERROR;
+            } catch (VirtualMachineError ex) {
+                // Treat StackOverflow and OutOfMemory as runtime errors
+                ex.printStackTrace();
+                String msg = ToolErrorReporter.getMessage(
+                        "msg.uncaughtJSException", ex.toString());
+                exitCode = EXITCODE_RUNTIME_ERROR;
+                Context.reportError(msg);
+            }
         } else {
             processFile(cx, global, filename);
         }
