@@ -22,12 +22,13 @@ import org.mozilla.javascript.ScriptableObject;
  * @author Attila Szegedi
  * @version $Id$
  */
-public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializable
+public abstract class ModuleSourceProviderBase implements
+        ModuleSourceProvider, Serializable
 {
     private static final long serialVersionUID = 1L;
 
     public ModuleSource loadSource(String moduleId, Scriptable paths,
-            Object validator) throws IOException
+            Object validator) throws IOException, URISyntaxException
     {
         if(!entityNeedsRevalidation(validator)) {
             return NOT_MODIFIED;
@@ -61,8 +62,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
         // Yeah, I'll ignore entries beyond Integer.MAX_VALUE; so sue me.
         int ilength = llength > Integer.MAX_VALUE ? Integer.MAX_VALUE : 
             (int)llength;
-        final String relativeModuleUri = moduleId.endsWith(".js") ?
-                moduleId : moduleId + ".js";
+
         for(int i = 0; i < ilength; ++i) {
             final String path = ensureTrailingSlash(
                     ScriptableObject.getTypedProperty(paths, i, String.class));
@@ -72,7 +72,7 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
                     uri = new File(path).toURI().resolve("");
                 }
                 final ModuleSource moduleSource = loadFromUri(
-                        uri.resolve(relativeModuleUri), uri, validator);
+                        uri.resolve(moduleId), uri, validator);
                 if(moduleSource != null) {
                     return moduleSource;
                 }
@@ -105,11 +105,12 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
     }
     
     /**
-     * Override in a subclass to load a module script from a URI. It is used
-     * to load scripts from the path array specified by require.paths property.
-     * By default, returns null (which is identical to basically ignoring 
-     * require.paths).
-     * @param uri the URI of the script
+     * Override in a subclass to load a module script from a logical URI. The
+     * URI is absolute but does not have a file name extension such as ".js".
+     * It is up to the ModuleSourceProvider implementation to add such an
+     * extension.
+     * @param uri the URI of the script, without file name extension.
+     * @param base the base URI the uri was resolved from.
      * @param validator a validator that can be used to revalidate an existing
      * cached source at the URI. Can be null if there is no cached source 
      * available.
@@ -118,12 +119,10 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * cached source against the URI.
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
+     * @throws URISyntaxException if the final URI could not be constructed
      */
-    protected ModuleSource loadFromUri(URI uri, URI base, Object validator)
-    throws IOException
-    {
-        return null;
-    }
+    protected abstract ModuleSource loadFromUri(URI uri, URI base,
+            Object validator) throws IOException, URISyntaxException;
 
     /**
      * Override to obtain a module source from privileged locations. This will 
@@ -137,9 +136,11 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * the existing cached module script is still valid.
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
+     * @throws URISyntaxException if the final URI could not be constructed.
      */
     protected ModuleSource loadFromPrivilegedLocations(
-            String moduleId, Object validator) throws IOException
+            String moduleId, Object validator)
+            throws IOException, URISyntaxException
     {
         return null;
     }
@@ -156,9 +157,11 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
      * the existing cached module script is still valid.
      * @throws IOException if the module script was found, but an I/O exception
      * prevented it from being loaded.
+     * @throws URISyntaxException if the final URI could not be constructed.
      */
     protected ModuleSource loadFromFallbackLocations(
-            String moduleId, Object validator) throws IOException
+            String moduleId, Object validator)
+            throws IOException, URISyntaxException
     {
         return null;
     }

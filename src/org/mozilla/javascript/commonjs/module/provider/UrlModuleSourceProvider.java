@@ -7,6 +7,7 @@ import java.io.Reader;
 import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Iterator;
@@ -82,30 +83,31 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
 
     @Override
     protected ModuleSource loadFromPrivilegedLocations(
-            String moduleId, Object validator) throws IOException
+            String moduleId, Object validator)
+            throws IOException, URISyntaxException
     {
         return loadFromPathList(moduleId, validator, privilegedUris);
     }
 
     @Override
     protected ModuleSource loadFromFallbackLocations(
-            String moduleId, Object validator) throws IOException
+            String moduleId, Object validator)
+            throws IOException, URISyntaxException
     {
         return loadFromPathList(moduleId, validator, fallbackUris);
     }
     
     private ModuleSource loadFromPathList(String moduleId,
-            Object validator, Iterable<URI> paths) throws IOException
+            Object validator, Iterable<URI> paths)
+            throws IOException, URISyntaxException
     {
         if(paths == null) {
             return null;
         }
-        final String relativeModuleUri = moduleId.endsWith(".js") ?
-                moduleId : moduleId + ".js";
         for (URI path : paths) {
             final ModuleSource moduleSource = loadFromUri(
-                    path.resolve(relativeModuleUri), path, validator);
-            if(moduleSource != null) {
+                    path.resolve(moduleId), path, validator);
+            if (moduleSource != null) {
                 return moduleSource;
             }
         }
@@ -114,17 +116,18 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
 
     @Override
     protected ModuleSource loadFromUri(URI uri, URI base, Object validator)
-    throws IOException
+    throws IOException, URISyntaxException
     {
-        try {
-            return loadFromUriInternal(uri, base, validator);
-        }
-        catch(FileNotFoundException e) {
-            return null;
-        }
+        // We expect modules to have a ".js" file name extension ...
+        URI fullUri = new URI(uri + ".js");
+        ModuleSource source = loadFromActualUri(fullUri, base, validator);
+        // ... but for compatibility we support modules without extension,
+        // or ids with explicit extension.
+        return source != null ?
+               source : loadFromActualUri(uri, base, validator);
     }
     
-    private ModuleSource loadFromUriInternal(URI uri, URI base, Object validator)
+    protected ModuleSource loadFromActualUri(URI uri, URI base, Object validator)
     throws IOException
     {
         final URL url = uri.toURL();
@@ -133,7 +136,7 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
         final URLValidator applicableValidator;
         if(validator instanceof URLValidator) {
             final URLValidator uriValidator = ((URLValidator)validator);
-            applicableValidator = uriValidator.appliesTo(uri) ? uriValidator : 
+            applicableValidator = uriValidator.appliesTo(uri) ? uriValidator :
                 null;
         }
         else {
@@ -142,9 +145,9 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
         if(applicableValidator != null) {
             applicableValidator.applyConditionals(urlConnection);
         }
-        urlConnection.connect();
         try {
-            if(applicableValidator != null && 
+            urlConnection.connect();
+            if(applicableValidator != null &&
                     applicableValidator.updateValidator(urlConnection, 
                             request_time, urlConnectionExpiryCalculator))
             {
@@ -154,8 +157,11 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
     
             return new ModuleSource(getReader(urlConnection), 
                     getSecurityDomain(urlConnection), uri, base,
-                    new URLValidator(uri, urlConnection, request_time, 
+                    new URLValidator(uri, urlConnection, request_time,
                             urlConnectionExpiryCalculator));
+        }
+        catch(FileNotFoundException e) {
+            return null;
         }
         catch(RuntimeException e) {
             close(urlConnection);
@@ -240,7 +246,7 @@ public class UrlModuleSourceProvider extends ModuleSourceProviderBase
         private final String entityTags;
         private long expiry;
         
-        public URLValidator(URI uri, URLConnection urlConnection, 
+        public URLValidator(URI uri, URLConnection urlConnection,
                 long request_time, UrlConnectionExpiryCalculator 
                 urlConnectionExpiryCalculator) {
             this.uri = uri;

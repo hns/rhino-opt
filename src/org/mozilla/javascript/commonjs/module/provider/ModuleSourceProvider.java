@@ -49,14 +49,18 @@ public interface ModuleSourceProvider
      * returned if the passed validator validates the current representation of
      * the module (the currently cached module script).
      * @throws IOException if there was an I/O problem reading the script
+     * @throws URISyntaxException if the final URI could not be constructed.
      * @throws IllegalArgumentException if the module ID is syntactically not a
      * valid absolute module identifier.
      */
     public ModuleSource loadSource(String moduleId, Scriptable paths, Object validator)
-            throws IOException;
+            throws IOException, URISyntaxException;
 
     /**
      * Returns the script source of the requested module from the given URI.
+     * The URI is absolute but does not contain a file name extension such as
+     * ".js", which may be specific to the ModuleSourceProvider implementation.
+     * <p>
      * If the resource is not found, null is returned. If the caller passes a
      * non-null validator, and the source provider recognizes it, and the
      * validator applies to the same resource that the provider would use to
@@ -66,7 +70,8 @@ public interface ModuleSourceProvider
      * should be returned. Otherwise, it should return a {@link ModuleSource}
      * object with the actual source text of the module, preferrably a
      * validator for it, and a security domain, where applicable.
-     * @param uri the URI from which to load the module source.
+     * @param uri the absolute URI from which to load the module source, but
+     * without an extension such as ".js".
      * @param validator a validator for an existing loaded and cached module.
      * This will either be null, or an object that this source provider
      * returned earlier as part of a {@link ModuleSource}. It can be used to
@@ -76,6 +81,7 @@ public interface ModuleSourceProvider
      * returned if the passed validator validates the current representation of
      * the module (the currently cached module script).
      * @throws IOException if there was an I/O problem reading the script
+     * @throws URISyntaxException if the final URI could not be constructed
      */
     public ModuleSource loadSource(URI uri, Object validator)
             throws IOException, URISyntaxException;
