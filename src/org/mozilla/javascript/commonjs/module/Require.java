@@ -162,7 +162,7 @@ public class Require extends BaseFunction
         }
 
         String id = (String)Context.jsToJava(args[0], String.class);
-        URI uri = null, base;
+        URI uri = null;
         if (id.startsWith("./") || id.startsWith("../")) {
             if (!(thisObj instanceof ModuleScope)) {
                 throw ScriptRuntime.throwError(cx, scope,
@@ -171,7 +171,7 @@ public class Require extends BaseFunction
             }
 
             ModuleScope moduleScope = (ModuleScope) thisObj;
-            base = moduleScope.getBase();
+            URI base = moduleScope.getBase();
             URI current = moduleScope.getUri();
             String relativePath = id.endsWith(".js") ? id : id + ".js";
 
