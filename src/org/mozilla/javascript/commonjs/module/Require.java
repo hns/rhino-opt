@@ -118,26 +118,42 @@ public class Require extends BaseFunction
             return mainExports;
         }
 
-        URI mainUri = null;
-        if (!sandboxed) {
-            // try to resolve to an absolute URI or file path first
-            try {
-                mainUri = new URI(mainModuleId);
-            } catch (URISyntaxException usx) {
-                // fall through
+        try {
+            // try to get the module script to see if it is on the module path
+            ModuleScript moduleScript = moduleScriptProvider.getModuleScript(
+                    cx, mainModuleId, null, paths);
+
+            if (moduleScript != null) {
+                mainExports = getExportedModuleInterface(cx, mainModuleId,
+                        null, true);
+            } else if (!sandboxed) {
+
+                URI mainUri = null;
+
+                // try to resolve to an absolute URI or file path
+                try {
+                    mainUri = new URI(mainModuleId);
+                } catch (URISyntaxException usx) {
+                    // fall through
+                }
+
+                // if not an absolute uri resolve to a file path
+                if (mainUri == null || !mainUri.isAbsolute()) {
+                    File file = new File(mainModuleId);
+                    mainUri = file.isFile() ? file.toURI() : null;
+                }
+                if (mainUri != null) {
+                    mainExports = getExportedModuleInterface(cx,
+                            mainUri.toString(), mainUri, true);
+                }
             }
-            if (mainUri == null || !mainUri.isAbsolute()) {
-                File file = new File(mainModuleId);
-                mainUri = file.isFile() ? file.toURI() : null;
-            }
+        } catch (Exception x) {
+            throw Context.throwAsScriptRuntimeEx(x);
         }
 
-        if (mainUri != null) {
-            mainExports = getExportedModuleInterface(cx, mainUri.toString(),
-                    mainUri, true);
-        } else {
-            mainExports = getExportedModuleInterface(cx, mainModuleId,
-                    null, true);
+        if (mainExports == null) {
+            throw ScriptRuntime.throwError(cx, nativeScope,
+                    "Module \"" + mainModuleId + "\" not found.");
         }
 
         this.mainModuleId = mainModuleId;
