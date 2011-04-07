@@ -5,15 +5,10 @@ function testRelativeRequire() {
 	    assert.fail("Relative ID without a module succeeded");
 	}
 	catch(e) {
-	    assert.equal(e.message, "Can't resolve relative module ID ./assert when require() is used outside of a module");
+	    assert.equal(e.message, "Can't resolve relative module ID \"./assert\" when require() is used outside of a module");
 	}
 }
-var module = null;
 testRelativeRequire();
-module = {};
-testRelativeRequire();
-module.id="x";
-assert.ok(assert === require("./assert"));
 assert.ok(assert === require("x/modx").assertThroughX);
 assert.ok(assert === require("x/y/mody").assertThroughXAndY);
 assert.ok(assert === require("x/y/mody").assertThroughY);
