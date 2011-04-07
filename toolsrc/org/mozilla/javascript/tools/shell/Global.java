@@ -159,7 +159,8 @@ public class Global extends ImporterTopLevel
         initialized = true;
     }
 
-    public Require installRequire(Context cx, String[] modulePath, boolean sandboxed) {
+    public Require installRequire(Context cx, List<String> modulePath,
+                                  boolean sandboxed) {
         RequireBuilder rb = new RequireBuilder();
         rb.setSandboxed(sandboxed);
         List<URI> uris = new ArrayList<URI>();

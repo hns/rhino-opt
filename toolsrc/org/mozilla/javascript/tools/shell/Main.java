@@ -98,7 +98,7 @@ public class Main
     static private final int EXITCODE_FILE_NOT_FOUND = 4;
     static boolean processStdin = true;
     static List<String> fileList = new ArrayList<String>();
-    static String[] modulePath;
+    static List<String> modulePath;
     static String mainModule;
     static boolean sandboxed = false;
     static Require require;
@@ -187,7 +187,7 @@ public class Main
         errorReporter = new ToolErrorReporter(false, global.getErr());
         shellContextFactory.setErrorReporter(errorReporter);
         String[] args = processOptions(origArgs);
-        if (mainModule != null)
+        if (mainModule != null && !fileList.contains(mainModule))
             fileList.add(mainModule);
         if (processStdin)
             fileList.add(null);
@@ -320,7 +320,10 @@ public class Main
                     usageError = arg;
                     break goodUsage;
                 }
-                modulePath = args[i].split(Pattern.quote(File.pathSeparator));
+                if (modulePath == null) {
+                    modulePath = new ArrayList<String>();
+                }
+                modulePath.add(args[i]);
                 continue;
             }
             if (arg.equals("-main")) {
