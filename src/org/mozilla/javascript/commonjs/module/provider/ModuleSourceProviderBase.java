@@ -6,7 +6,6 @@ import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.StringTokenizer;
 
 import org.mozilla.javascript.ScriptRuntime;
 import org.mozilla.javascript.Scriptable;
@@ -30,10 +29,6 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
     public ModuleSource loadSource(String moduleId, Scriptable paths,
             Object validator) throws IOException
     {
-        /* if(!isValidModuleIdentifier(moduleId)) {
-            throw ScriptRuntime.constructError("Error",
-                    "Module ID '" + moduleId + "' is not valid");
-        } */
         if(!entityNeedsRevalidation(validator)) {
             return NOT_MODIFIED;
         }
@@ -166,39 +161,5 @@ public class ModuleSourceProviderBase implements ModuleSourceProvider, Serializa
             String moduleId, Object validator) throws IOException
     {
         return null;
-    }
-
-    /**
-     * Tests whether a module ID is valid.
-     * @param moduleId the module ID. It must not be relative (must have 
-     * already been resolved into an absolute module ID).
-     * @return true if it is a valid module ID, false otherwise.
-     */
-    public static boolean isValidModuleIdentifier(String moduleId) {
-        if(moduleId == null || moduleId.length() == 0) {
-            return false;
-        }
-        final StringTokenizer tok = new StringTokenizer(moduleId, "/");
-        while(tok.hasMoreTokens()) {
-            final String term = tok.nextToken();
-            if(!isValidTerm(term)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    private static boolean isValidTerm(String term) {
-        final int l = term.length();
-        if(!Character.isJavaIdentifierStart(term.charAt(0))) {
-            return false;
-        }
-        for(int i = 1; i < l; ++i) {
-            char c = term.charAt(i);
-            if(!Character.isJavaIdentifierPart(c) && c != '-') {
-                return false;
-            }
-        }
-        return true;
     }
 }
